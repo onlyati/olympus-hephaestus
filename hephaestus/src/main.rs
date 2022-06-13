@@ -82,6 +82,10 @@ fn main() {
         exit(1);
     }
 
+    /*-------------------------------------------------------------------------------------------*/
+    /* It seems everything is okay so far, let's start the listening on socket and see           */
+    /* what happens                                                                              */
+    /*-------------------------------------------------------------------------------------------*/
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {

@@ -57,7 +57,22 @@ pub fn handle_client(mut stream: UnixStream) {
     }
 
     let command = String::from_utf8(msg_u8).unwrap();
-    println!("Incoming request was: [{}]", command);
+
+    let mut verb: String = String::from("");
+    let mut options: Vec<String> = Vec::with_capacity(5 * size_of::<String>());
+
+    let mut index = 0;
+    for word in command.split_whitespace() {
+        if index == 0 {
+            verb = String::from(word);
+        }
+        else {
+            options.push(String::from(word));
+        }
+        index += 1;
+    }
+
+    println!("Command: {}; Options: {:?}", verb, options);
 
     let _ = stream.write_all(b"OK");
 }

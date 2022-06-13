@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::process::exit;
 use std::os::unix::net::UnixListener;
+use std::os::unix::fs::PermissionsExt;
 
 mod stream_handler;
 
@@ -73,6 +74,13 @@ fn main() {
             exit(1);
         }
     };
+
+    let mut permission = fs::metadata(socket_path).unwrap().permissions();
+    permission.set_mode(0o775);
+    if let Err(e) = fs::set_permissions(socket_path, permission) {
+        println!("Error during permission change of socket: {:?}", e);
+        exit(1);
+    }
 
     for stream in listener.incoming() {
         match stream {

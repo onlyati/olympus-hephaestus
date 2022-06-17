@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 use std::process::exit;
 use std::os::unix::net::UnixListener;
 use std::os::unix::fs::PermissionsExt;
@@ -81,6 +82,12 @@ fn main() {
         println!("Error during permission change of socket: {:?}", e);
         exit(1);
     }
+
+    let _ = Command::new("/usr/bin/chown")
+        .arg("root:olympos")
+        .arg(socket_path)
+        .output()
+        .expect("Ownership change of sockert has failed");
 
     /*-------------------------------------------------------------------------------------------*/
     /* It seems everything is okay so far, let's start the listening on socket and see           */

@@ -61,10 +61,14 @@ pub fn handle_client(mut stream: UnixStream) {
                 }
             },
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                let _ = stream.write_all(b"Request is not complete within time");
+                let _ = stream.write_all(b"ERROR: Request is not complete within time");
                 return;
             },
-            Err(e) => println!("Unexpected error: {:?}", e),
+            Err(e) => {
+                println!("Unexpected error: {:?}", e);
+                let _ = stream.write_all(b"ERROR: Internal server error during stream reading");
+                return;
+            },
         }
     }
 

@@ -3,6 +3,7 @@ use std::io::BufReader;
 use std::os::unix::net::UnixStream;
 use std::io::Read;
 use std::io::Write;
+use std::time::Duration;
 
 use crate::commands;
 
@@ -42,10 +43,8 @@ pub fn handle_client(mut stream: UnixStream) {
                     continue;
                 }
 
-                /* If bad request would come which does not contains number as first world, then let it have end to avoid infitiy loop */
-                if b == b'\n' {
-                    break;
-                }
+                // Set timeout to avoid infinite waiting on the stream
+                stream.set_read_timeout(Some(Duration::new(0, 250))).unwrap();
 
                 /* Read from buffer */
                 if read_msg {
@@ -60,6 +59,10 @@ pub fn handle_client(mut stream: UnixStream) {
                     length_u8.push(b);
                     continue;
                 }
+            },
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                let _ = stream.write_all(b"Request is not complete within time");
+                return;
             },
             Err(e) => println!("Unexpected error: {:?}", e),
         }

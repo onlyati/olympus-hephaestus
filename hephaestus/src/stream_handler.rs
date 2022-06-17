@@ -4,6 +4,8 @@ use std::os::unix::net::UnixStream;
 use std::io::Read;
 use std::io::Write;
 
+use crate::commands;
+
 /// Handle client requests
 /// 
 /// This function is intended to handle client requests from UNIX socket.
@@ -113,13 +115,18 @@ fn command_coordinator(verb: String, options: Vec<String>) -> Result<String, Str
     let exec_verb = String::from("exec");
     let stat_verb = String::from("status");
     let help_verb = String::from("help");
+    let hist_verb = String::from("history");
 
     if verb == list_verb {
-        return Ok(String::from("We did some listing\nHere\nHere\nAnd here...\n"));
+        return commands::list(options);
     }
 
     if verb == exec_verb {
         return Ok(String::from("We will execute something..."));
+    }
+
+    if verb == hist_verb {
+        return Ok(String::from("Fetch some history"));
     }
 
     if verb == stat_verb {
@@ -127,7 +134,7 @@ fn command_coordinator(verb: String, options: Vec<String>) -> Result<String, Str
     }
 
     if verb == help_verb {
-        return Ok(String::from("Help is on the route!"));
+        return commands::help(options);
     }
 
     return Err(String::from("Invalid command verb"));

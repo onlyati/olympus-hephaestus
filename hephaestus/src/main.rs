@@ -7,6 +7,7 @@ use std::os::unix::net::UnixListener;
 use std::os::unix::fs::PermissionsExt;
 
 mod stream_handler;
+mod commands;
 
 fn main() {
     /*-------------------------------------------------------------------------------------------*/
@@ -36,7 +37,7 @@ fn main() {
     /* +-- plans                                                                                 */
     /* '-- logs                                                                                  */
     /*-------------------------------------------------------------------------------------------*/
-    let plan_dir = format!("{}/plans", args[1]);
+    let plan_dir = format!("plans");
     let plan_dir = Path::new(&plan_dir);
 
     if !plan_dir.is_dir() {
@@ -46,7 +47,7 @@ fn main() {
         }
     }
 
-    let log_dir = format!("{}/logs", args[1]);
+    let log_dir = format!("logs");
     let log_dir = Path::new(&log_dir);
 
     if !log_dir.is_dir() {

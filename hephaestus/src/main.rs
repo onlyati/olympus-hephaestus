@@ -85,7 +85,7 @@ fn main() {
     }
 
     let _ = Command::new("/usr/bin/chown")
-        .arg("root:olympos")
+        .arg("root:olympus")
         .arg(socket_path)
         .output()
         .expect("Ownership change of sockert has failed");

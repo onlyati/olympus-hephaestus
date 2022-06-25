@@ -34,7 +34,7 @@ pub fn handle_client(mut stream: UnixStream) {
                     length = match msg_len_t.parse::<usize>() {
                         Ok(v) => v,
                         Err(_) => {
-                            let _ = stream.write_all(b"First word must be a number which is the lenght of message");
+                            let _ = stream.write_all(b"First word must be a number which is the lenght of message\n");
                             return;
                         }
                     };
@@ -61,12 +61,12 @@ pub fn handle_client(mut stream: UnixStream) {
                 }
             },
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                let _ = stream.write_all(b"ERROR: Request is not complete within time");
+                let _ = stream.write_all(b"ERROR: Request is not complete within time\n");
                 return;
             },
             Err(e) => {
                 println!("Unexpected error: {:?}", e);
-                let _ = stream.write_all(b"ERROR: Internal server error during stream reading");
+                let _ = stream.write_all(b"ERROR: Internal server error during stream reading\n");
                 return;
             },
         }
@@ -74,7 +74,7 @@ pub fn handle_client(mut stream: UnixStream) {
 
     if !read_msg {
         /* This happen when the first world was not a number and new line was incoming */
-        let _ = stream.write_all(b"First word must be a number which is the lenght of message");
+        let _ = stream.write_all(b"First word must be a number which is the lenght of message\n");
         return;
     }
 
@@ -129,7 +129,7 @@ fn command_coordinator(verb: String, options: Vec<String>) -> Result<String, Str
     }
 
     if verb == exec_verb {
-        return Ok(String::from("We will execute something..."));
+        return commands::exec(options);
     }
 
     if verb == hist_verb {

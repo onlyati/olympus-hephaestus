@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::process::exit;
@@ -8,6 +9,7 @@ use std::os::unix::fs::PermissionsExt;
 
 mod stream_handler;
 mod commands;
+mod types;
 
 fn main() {
     /*-------------------------------------------------------------------------------------------*/
@@ -84,12 +86,18 @@ fn main() {
         exit(1);
     }
 
-    let _ = Command::new("/usr/bin/chown")
+    let chown = Command::new("/usr/bin/chown")
         .arg("root:olympus")
         .arg(socket_path)
         .output()
         .expect("Ownership change of sockert has failed");
 
+    if !chown.status.success() {
+        std::io::stdout().write_all(&chown.stdout).unwrap();
+        std::io::stderr().write_all(&chown.stderr).unwrap();
+        exit(1);
+    }
+    
     /*-------------------------------------------------------------------------------------------*/
     /* It seems everything is okay so far, let's start the listening on socket and see           */
     /* what happens                                                                              */

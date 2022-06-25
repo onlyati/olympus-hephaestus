@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::process::Command;
 
+/// Structure to store information about step
 pub struct Step {
     pub step_name: String,
     pub description: String,
@@ -13,6 +14,9 @@ pub struct Step {
 }
 
 impl Step {
+    /// Create new empty step
+    /// 
+    /// It does not requires any input, but if data is not filled up, it would fail on validate process
     pub fn new_empty() -> Step {
         return Step {
             step_name: String::new(),
@@ -24,6 +28,9 @@ impl Step {
         };
     }
 
+    /// Validate step
+    /// 
+    /// Be assumed that the specified step is okay and correct to run it, it has every mandatory data
     pub fn validate(&self) -> Result<(), String> {
         let mut err_msg: String = String::new();
 
@@ -42,6 +49,12 @@ impl Step {
         if let None = self.action {
             err_msg += "Action must be specified!\n";
         }
+
+        if self.step_type == StepType::Recovery {
+            if let None = self.parent {
+                err_msg += "Recovery step must have parent!\n";
+            }
+        }
         
         if err_msg.is_empty() {
             return Ok(());
@@ -49,6 +62,7 @@ impl Step {
         return Err(err_msg);
     }
 
+    /// Execute the command from the step and change its status accordingly
     pub fn execute(&mut self) {
         match &self.action {
             Some(act) => {
@@ -98,6 +112,9 @@ impl fmt::Debug for Step {
     }
 }
 
+/// Action alias command:
+/// - cmd => Command which must be executed
+/// - args => Arguments of program
 pub struct Action {
     pub cmd: Option<String>,
     pub args: Vec<String>,
@@ -125,6 +142,10 @@ impl Action {
     }
 }
 
+/// Type of step:
+/// - Action => Regular step
+/// - Recovery => Regular step has failed, it is a recovery step for regular step
+/// - None => Step type is not set yet
 #[derive(Eq, PartialEq)]
 pub enum StepType {
     Action,
@@ -143,6 +164,11 @@ impl fmt::Debug for StepType {
     }
 }
 
+/// Enum for step running status:
+/// - Ok => Command has run with 0 code
+/// - Nok => Command has run with higher than 0 code
+/// - Failed => Some internal issue happened
+/// - NotRun => Step is waiting for execution
 #[derive(Eq, PartialEq)]
 pub enum StepStatus {
     Ok,

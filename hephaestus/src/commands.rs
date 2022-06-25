@@ -27,6 +27,9 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
     return Ok(response);
 }
 
+/// Execute specifiec step
+/// 
+/// This function read the file, validate it then execute on same thread as it is
 pub fn exec(options: Vec<String>) -> Result<String, String> {
     if options.len() < 2 {
         return Err(String::from("Workflow set and workflow also must be specified: exec <workflow-set> <workflow>\n"));
@@ -41,6 +44,9 @@ pub fn exec(options: Vec<String>) -> Result<String, String> {
         Err(e) => return Err(e),
     };
 
+    /*-------------------------------------------------------------------------------------------*/
+    /* Workflow is read, now start to execute its command and act accordingly                    */
+    /*-------------------------------------------------------------------------------------------*/
     for step in &mut steps {
         let mut step = step.borrow_mut();
         step.execute();
@@ -51,7 +57,12 @@ pub fn exec(options: Vec<String>) -> Result<String, String> {
 }
 
 /// Read the plan file and create a vector from its steps
+/// 
+/// This is an internal function in this module. It read and collect information about specified config file.
 fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
+    /*-------------------------------------------------------------------------------------------*/
+    /* Verify that file does exist                                                               */
+    /*-------------------------------------------------------------------------------------------*/
     let file = match fs::File::open(path) {
         Ok(f) => f,
         Err(e) => return Err(format!("Error during open '{}': {:?}\n", path.display(), e)),
@@ -62,19 +73,25 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
 
     let mut steps: Vec<Rc<RefCell<Step>>> = Vec::new();
 
+    /*-------------------------------------------------------------------------------------------*/
+    /* Start to read every single line and process them                                          */
+    /*-------------------------------------------------------------------------------------------*/
     for line in BufReader::new(file).lines() {
         if let Ok(line_content) = line {
+            // If file is empty then nothing to do
             if line_content.is_empty() {
                 continue;
             }
 
+            // If file is comment (begins with '#') then nothing to do
             if line_content.len() >= 1 {
                 if &line_content[0..1] == "#" {
-                    // It is a comment line
                     continue;
                 }
             }
 
+            // Beginning of a new normal step
+            // Start to collect lines into one variable
             if line_content.len() >= 5 {
                 if &line_content[0..5] == "<step" {
                     // Step description has begun
@@ -82,6 +99,8 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
                 }
             }
 
+            // Beginning of a new recovery step
+            // Start to collect lines into one variable
             if line_content.len() >= 9 {
                 if &line_content[0..9] == "<recovery" {
                     // Step description has begun
@@ -89,27 +108,37 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
                 }
             }
 
+            /*-----------------------------------------------------------------------------------*/
+            /* There was an open tag and we need to collect and process the step                 */
+            /*-----------------------------------------------------------------------------------*/
             if collect {
+                // Append current data into variable
                 step_raw += " ";
                 step_raw +=  &line_content[..].trim();
-                if line_content.contains("</step>") || line_content.contains("</recovery>") {
-                    // Process step_raw and create struct
-                    let mut step: Step = Step::new_empty();
-                    let mut record_desc: bool = false;
-                    let mut record_cmd: bool = false;
 
-                    // println!("{}", step_raw);
+                // If close tag is present, it means we are end of step, start to process collected data
+                if line_content.contains("</step>") || line_content.contains("</recovery>") {
+                    /*---------------------------------------------------------------------------*/
+                    /* Split the line at whitespaces then process every single word              */
+                    /*---------------------------------------------------------------------------*/
+                    let mut step: Step = Step::new_empty();
+                    let mut record_desc: bool = false;               // Description can be more words, must use for tracking its collection
+                    let mut record_cmd: bool = false;                // Command can be more words, must use for tracking its collection
 
                     for word in step_raw.split_whitespace() {
+                        // It is a regular step
                         if word == "<step" {
                             step.step_type = StepType::Action;
                             continue;
                         }
+
+                        // It is a recovery step for a regular step
                         if word == "<recovery" {
                             step.step_type = StepType::Recovery;
                             continue;
                         }
 
+                        // Parse the name of the step
                         if word.contains("name=\"") {
                             let parms: Vec<&str> = word.split("\"").collect();
                             if parms.len() < 2 {
@@ -118,7 +147,7 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
                             step.step_name = String::from(parms[1]);
                         }
 
-                        
+                        // Parse the parent step and validate that it has been defined earlier
                         if word.contains("parent=\"") {
                             let parms: Vec<&str> = word.split("\"").collect();
                             if parms.len() < 2 {
@@ -138,6 +167,7 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
                             }
                         }
 
+                        // Start to collect description
                         if word.contains("desc=\"") {
                             let parms: Vec<&str> = word.split("\"").collect();
                             if parms.len() < 2 {
@@ -172,6 +202,7 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
                             continue;
                         }
 
+                        // Start to collect command
                         if word.contains(">") {
                             record_cmd = true;
                             continue;
@@ -195,7 +226,7 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
 
                     steps.push(Rc::new(RefCell::new(step)));
 
-                    // Curent step read is ended
+                    // Curent step read is ended, reset variables
                     step_raw = String::new();
                     collect = false;
                 }
@@ -293,11 +324,13 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
         let path = format!("plans/{}/{}.conf", options[0], options[1]);
         let path = Path::new(&path);
 
+        // Let's try to read the specified file
         let steps = match collect_steps(path) {
             Ok(v) => v,
             Err(e) => return Err(e),
         };
 
+        // If file read was success, then print it into a printable format and send back
         for step in &steps {
             let step = step.borrow();
             let mut line = format!("Name: {}, Type: {:?}, Description: {},", step.step_name, step.step_type, step.description);

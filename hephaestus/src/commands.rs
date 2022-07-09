@@ -533,7 +533,7 @@ pub fn dump(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
 
     {
         let mut history = history.lock().unwrap();
-        std::thread::sleep(std::time::Duration::from_secs(10));
+        
         let mut keys: Vec<u64> = Vec::with_capacity(history.len() * size_of::<u64>());
 
         for (index, logs) in history.iter_mut() {

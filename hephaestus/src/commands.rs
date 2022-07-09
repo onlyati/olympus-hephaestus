@@ -46,7 +46,9 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         return Err(String::from("Workflow set and workflow also must be specified: exec <workflow-set> <workflow>\n"));
     }
     
-    // Read the workflow
+    /*-------------------------------------------------------------------------------------------*/
+    /* Read and verify workflow file                                                             */
+    /*-------------------------------------------------------------------------------------------*/
     let path = format!("plans/{}/{}.conf", options[0], options[1]);
     let path = Path::new(&path);
 
@@ -58,6 +60,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     let mut workflow_index = 0;
     let dt = Local::now();
     let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
+
     // Get the next workflow number
     {
         let mut history = history.lock().unwrap();
@@ -76,7 +79,14 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     let copy_hist = Arc::clone(&history);
 
     let _ = thread::spawn(move || {
-        let mut completion_list: HashMap<&String, Step> = HashMap::new();
+        let mut completion_list: HashMap<&String, Step> = HashMap::new();  // We will save the previous steps for parent checking
+
+        /*---------------------------------------------------------------------------------------*/
+        /* Run through the step list. Step will be executed if:                                  */
+        /* 1. This is a regular step and has no parent or parent run OK                          */
+        /* 2. This is a recovery step and its parent step has Failed or NOK                      */
+        /* Any other case, step remains NoRun status                                             */
+        /*---------------------------------------------------------------------------------------*/
         for step in steps.iter_mut() {
             let dt = Local::now();
             let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
@@ -87,6 +97,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                         v.push(format!("{} {:10} {} => Pending", timestamp, workflow_index, step.step_name));
                     },
                     None => {
+                        // Not ideal but it can happen that dump log has run while workflow was executed and hashmap has been erased
+                        // It needs to create the key again
                         let msg: Vec<String> = vec![format!("{} {:10} {} => Pending", timestamp, workflow_index, step.step_name)];
                         history.insert(workflow_index, msg);
                     },
@@ -98,7 +110,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
             match &step.parent {
                 Some(p) => {
                     if let Some(v) = completion_list.get(p) {
-                        if (v.status == StepStatus::Ok && step.step_type == StepType::Action) || ((v.status == StepStatus::Failed || v.status == StepStatus::Nok) && step.step_type == StepType::Recovery) {
+                        if (v.status == StepStatus::Ok && step.step_type == StepType::Action) || 
+                           ((v.status == StepStatus::Failed || v.status == StepStatus::Nok) && step.step_type == StepType::Recovery) {
                             enable = true;
                         }
                     }
@@ -122,6 +135,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                         v.push(format!("{} {:10} {} => {:?}", timestamp, workflow_index, step.step_name, step.status));
                     },
                     None => {
+                        // Not ideal but it can happen that dump log has run while workflow was executed and hashmap has been erased
+                        // It needs to create the key again
                         let msg: Vec<String> = vec![format!("{} {:10} {} => {:?}", timestamp, workflow_index, step.step_name, step.status)];
                         history.insert(workflow_index, msg);
                     },
@@ -138,6 +153,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                     v.push(format!("{} {:10} Workflow is ended", timestamp, workflow_index));
                 },
                 None => {
+                    // Not ideal but it can happen that dump log has run while workflow was executed and hashmap has been erased
+                        // It needs to create the key again
                     let msg: Vec<String> = vec![format!("{} {:10} Workflow is ended", timestamp, workflow_index)];
                     history.insert(workflow_index, msg);
                 },
@@ -145,6 +162,9 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         }
     });
 
+    /*-------------------------------------------------------------------------------------------*/
+    /* Execution started asyncronically, return to user that it has been started                 */
+    /*-------------------------------------------------------------------------------------------*/
     return Ok(format!("Workflow execution has started, ID is: {workflow_index}\n"));
 }
 

@@ -1,6 +1,8 @@
 publish:
 	cd $(shell pwd)/hephaestus && cargo build --release
+	sudo systemctl stop olympus.hephaestus
 	sudo cp $(shell pwd)/hephaestus/target/release/hephaestus /usr/share/olympus/hephaestus/
+	sudo systemctl start olympus.hephaestus
 	cd $(shell pwd)/cli && cargo build --release
 	sudo cp $(shell pwd)/cli/target/release/cli /usr/share/olympus/hephaestus/
 
@@ -10,4 +12,6 @@ publish_cli:
 
 publish_hephaestus:
 	cd $(shell pwd)/hephaestus && cargo build --release
+	sudo systemctl stop olympus.hephaestus
 	sudo cp $(shell pwd)/hephaestus/target/release/hephaestus /usr/share/olympus/hephaestus/
+	sudo systemctl start olympus.hephaestus

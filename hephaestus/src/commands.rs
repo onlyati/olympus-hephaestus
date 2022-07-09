@@ -26,7 +26,7 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
     response = response + "Retrieve list about workflow sets:             list \n";
     response = response + "Retrieve list about workflows within a set:    list <workflow-set>\n";
     response = response + "Retrive details about workflow:                list <workflow-set> <workflow>\n";
-    response = response + "Retrieve list about online workflow history:   history\n";
+    response = response + "List workflow IDs:                             workflows\n";
     response = response + "Status of workflow in historical data:         status <workflow-id>\n";
     response = response + "Request to execute a workflow:                 exec <workflow-set> <workflow>\n";
 
@@ -61,7 +61,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 workflow_index = *index + 1;
             }
         }
-        let logs: Vec<String> = vec![format!("{} Workflow {} is created", timestamp, workflow_index)];
+        let logs: Vec<String> = vec![format!("{} {:10} Workflow is created", timestamp, workflow_index)];
         history.insert(workflow_index, logs);
     }
 
@@ -78,7 +78,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 let mut history = copy_hist.lock().unwrap();
                 match history.get_mut(&workflow_index) {
                     Some(v) => {
-                        v.push(format!("{} Start to execute step: {}", timestamp, step.step_name));
+                        v.push(format!("{} {:10} {} => Starting", timestamp, workflow_index, step.step_name));
                     },
                     None => {
                         println!("Internal error occured during creation {}/{}", options[0], options[1]);
@@ -94,7 +94,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 let mut history = copy_hist.lock().unwrap();
                 match history.get_mut(&workflow_index) {
                     Some(v) => {
-                        v.push(format!("{} Step name: {}, Status: {:?}", timestamp, step.step_name, step.status));
+                        v.push(format!("{} {:10} {} => {:?}", timestamp, workflow_index, step.step_name, step.status));
                     },
                     None => {
                         println!("Internal error occured during creation {}/{}", options[0], options[1]);
@@ -109,7 +109,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
             let mut history = copy_hist.lock().unwrap();
             match history.get_mut(&workflow_index) {
                 Some(v) => {
-                    v.push(format!("{} Workflow {} is ended", timestamp, workflow_index));
+                    v.push(format!("{} {:10} Workflow is ended", timestamp, workflow_index));
                 },
                 None => {
                     println!("Internal error occured during creation {}/{}", options[0], options[1]);
@@ -449,4 +449,20 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     return Ok(String::from("Invalid list parameter"));
+}
+
+/// List all IDs
+/// 
+/// List all IDs which is in memory of process
+pub fn list_ids(_options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) -> Result<String, String> {
+    let mut response = String::new();
+
+    {
+        let history = history.lock().unwrap();
+        for (index, _) in history.iter() {
+            response += &format!("{}\n", index);
+        }
+    }
+
+    return Ok(response);
 }

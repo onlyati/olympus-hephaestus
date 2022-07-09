@@ -126,6 +126,7 @@ fn command_coordinator(verb: String, options: Vec<String>, history: Arc<Mutex<Ha
     let stat_verb = String::from("status");
     let help_verb = String::from("help");
     let flow_verb = String::from("workflows");
+    let dump_verb = String::from("dump");
 
     if verb == list_verb {
         return commands::list(options);
@@ -145,6 +146,10 @@ fn command_coordinator(verb: String, options: Vec<String>, history: Arc<Mutex<Ha
 
     if verb == flow_verb {
         return commands::list_ids(options, history);
+    }
+
+    if verb == dump_verb {
+        return commands::dump(options, history);
     }
 
     return Err(String::from("Invalid command verb"));

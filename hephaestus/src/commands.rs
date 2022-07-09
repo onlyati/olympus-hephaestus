@@ -1,8 +1,11 @@
 use std::fs;
+use std::fs::File;
 use std::path::Path;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::io::Write;
 use std::thread;
+use std::mem::size_of;
 
 use crate::types::Step;
 use crate::types::StepType;
@@ -30,6 +33,7 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
     response = response + "List workflow IDs:                             workflows\n";
     response = response + "Status of workflow in historical data:         status <workflow-id>\n";
     response = response + "Request to execute a workflow:                 exec <workflow-set> <workflow>\n";
+    response = response + "Dump log from memory:                          dump log\n";
 
     return Ok(response);
 }
@@ -83,7 +87,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                         v.push(format!("{} {:10} {} => Pending", timestamp, workflow_index, step.step_name));
                     },
                     None => {
-                        println!("Internal error occured during creation {}/{}", options[0], options[1]);
+                        let msg: Vec<String> = vec![format!("{} {:10} {} => Pending", timestamp, workflow_index, step.step_name)];
+                        history.insert(workflow_index, msg);
                     },
                 };
             }
@@ -117,7 +122,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                         v.push(format!("{} {:10} {} => {:?}", timestamp, workflow_index, step.step_name, step.status));
                     },
                     None => {
-                        println!("Internal error occured during creation {}/{}", options[0], options[1]);
+                        let msg: Vec<String> = vec![format!("{} {:10} {} => {:?}", timestamp, workflow_index, step.step_name, step.status)];
+                        history.insert(workflow_index, msg);
                     },
                 };
             }
@@ -132,7 +138,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                     v.push(format!("{} {:10} Workflow is ended", timestamp, workflow_index));
                 },
                 None => {
-                    println!("Internal error occured during creation {}/{}", options[0], options[1]);
+                    let msg: Vec<String> = vec![format!("{} {:10} Workflow is ended", timestamp, workflow_index)];
+                    history.insert(workflow_index, msg);
                 },
             };
         }
@@ -485,4 +492,41 @@ pub fn list_ids(_options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<Strin
     }
 
     return Ok(response);
+}
+
+/// Dump
+/// 
+/// Dump log from memory onto file
+pub fn dump(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) -> Result<String, String> {
+    if options.len() < 1 {
+        return Err(String::from("Missing parameter for dump"));
+    }
+
+    if options[0] != String::from("log") {
+        return Err(String::from("Invalid dump option"));
+    }
+
+    let dt = Local::now();
+    let path = format!("logs/{}-{:02}-{:02}#{:02}:{:02}:{:02}.log", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
+    let path = Path::new(&path);
+    let mut log_file = File::create(path).unwrap();
+
+    {
+        let mut history = history.lock().unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        let mut keys: Vec<u64> = Vec::with_capacity(history.len() * size_of::<u64>());
+
+        for (index, logs) in history.iter_mut() {
+            keys.push(*index);
+            for log in logs {
+                writeln!(log_file, "{}", log).unwrap();
+            }
+        }
+
+        for key in keys {
+            history.remove(&key).unwrap();
+        }
+    }
+
+    return Ok(String::from("OK"));
 }

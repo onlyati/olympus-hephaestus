@@ -57,7 +57,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     {
         let mut history = history.lock().unwrap();
         for (index, _) in history.iter() {
-            if *index > workflow_index || *index == workflow_index {
+            if *index >= workflow_index {
                 workflow_index = *index + 1;
             }
         }
@@ -101,6 +101,20 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                     },
                 };
             }
+        }
+
+        let dt = Local::now();
+        let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
+        {
+            let mut history = copy_hist.lock().unwrap();
+            match history.get_mut(&workflow_index) {
+                Some(v) => {
+                    v.push(format!("{} Workflow {} is ended", timestamp, workflow_index));
+                },
+                None => {
+                    println!("Internal error occured during creation {}/{}", options[0], options[1]);
+                },
+            };
         }
     });
 

@@ -2,6 +2,7 @@ use std::fmt;
 use std::process::Command;
 
 /// Structure to store information about step
+#[derive(Clone)]
 pub struct Step {
     pub step_name: String,
     pub description: String,
@@ -113,6 +114,7 @@ impl fmt::Debug for Step {
 /// Action alias command:
 /// - cmd => Command which must be executed
 /// - args => Arguments of program
+#[derive(Clone)]
 pub struct Action {
     pub cmd: Option<String>,
     pub args: Vec<String>,
@@ -144,7 +146,7 @@ impl Action {
 /// - Action => Regular step
 /// - Recovery => Regular step has failed, it is a recovery step for regular step
 /// - None => Step type is not set yet
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub enum StepType {
     Action,
     Recovery,
@@ -167,7 +169,7 @@ impl fmt::Debug for StepType {
 /// - Nok => Command has run with higher than 0 code
 /// - Failed => Some internal issue happened
 /// - NotRun => Step is waiting for execution
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub enum StepStatus {
     Ok,
     Nok,

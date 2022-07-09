@@ -7,6 +7,7 @@ use std::thread;
 use crate::types::Step;
 use crate::types::StepType;
 use crate::types::Action;
+use crate::types::StepStatus;
 
 use std::sync::Mutex;
 use std::collections::HashMap;
@@ -71,6 +72,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     let copy_hist = Arc::clone(&history);
 
     let _ = thread::spawn(move || {
+        let mut completion_list: HashMap<&String, Step> = HashMap::new();
         for step in steps.iter_mut() {
             let dt = Local::now();
             let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
@@ -78,7 +80,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 let mut history = copy_hist.lock().unwrap();
                 match history.get_mut(&workflow_index) {
                     Some(v) => {
-                        v.push(format!("{} {:10} {} => Starting", timestamp, workflow_index, step.step_name));
+                        v.push(format!("{} {:10} {} => Pending", timestamp, workflow_index, step.step_name));
                     },
                     None => {
                         println!("Internal error occured during creation {}/{}", options[0], options[1]);
@@ -86,7 +88,25 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 };
             }
 
-            step.execute();
+            let mut enable = false;
+
+            match &step.parent {
+                Some(p) => {
+                    if let Some(v) = completion_list.get(p) {
+                        if (v.status == StepStatus::Ok && step.step_type == StepType::Action) || ((v.status == StepStatus::Failed || v.status == StepStatus::Nok) && step.step_type == StepType::Recovery) {
+                            enable = true;
+                        }
+                    }
+                },
+                None => {
+                    enable = true;
+                }
+            }
+
+            if enable {
+                step.execute();
+                completion_list.insert(&step.step_name, step.clone());
+            }
 
             let dt = Local::now();
             let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());

@@ -12,6 +12,9 @@ use std::sync::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use chrono::Datelike;
+use chrono::Local;
+use chrono::Timelike;
 
 /// Help command
 /// 
@@ -48,6 +51,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     };
 
     let mut workflow_index = 0;
+    let dt = Local::now();
+    let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
     // Get the next workflow number
     {
         let mut history = history.lock().unwrap();
@@ -56,7 +61,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 workflow_index = *index + 1;
             }
         }
-        let logs: Vec<String> = vec![format!("Workflow {} is created", workflow_index)];
+        let logs: Vec<String> = vec![format!("{} Workflow {} is created", timestamp, workflow_index)];
         history.insert(workflow_index, logs);
     }
 
@@ -67,12 +72,29 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
 
     let _ = thread::spawn(move || {
         for step in steps.iter_mut() {
-            step.execute();
+            let dt = Local::now();
+            let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
             {
                 let mut history = copy_hist.lock().unwrap();
                 match history.get_mut(&workflow_index) {
                     Some(v) => {
-                        v.push(format!("Step name: {}, Status: {:?}", step.step_name, step.status));
+                        v.push(format!("{} Start to execute step: {}", timestamp, step.step_name));
+                    },
+                    None => {
+                        println!("Internal error occured during creation {}/{}", options[0], options[1]);
+                    },
+                };
+            }
+
+            step.execute();
+
+            let dt = Local::now();
+            let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
+            {
+                let mut history = copy_hist.lock().unwrap();
+                match history.get_mut(&workflow_index) {
+                    Some(v) => {
+                        v.push(format!("{} Step name: {}, Status: {:?}", timestamp, step.step_name, step.status));
                     },
                     None => {
                         println!("Internal error occured during creation {}/{}", options[0], options[1]);

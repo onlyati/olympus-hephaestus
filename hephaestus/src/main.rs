@@ -6,6 +6,9 @@ use std::process::Command;
 use std::process::exit;
 use std::os::unix::net::UnixListener;
 use std::os::unix::fs::PermissionsExt;
+use std::sync::Mutex;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 mod stream_handler;
 mod commands;
@@ -97,6 +100,13 @@ fn main() {
         std::io::stderr().write_all(&chown.stderr).unwrap();
         exit(1);
     }
+
+    /*-------------------------------------------------------------------------------------------*/
+    /* Create a list for history and number to track workflow IDs. They must be mutexes as they  */
+    /* will be handled by threads.                                                               */
+    /*-------------------------------------------------------------------------------------------*/
+    let history: HashMap<u64, Vec<String>> = HashMap::new();
+    let hist_mutex = Arc::new(Mutex::new(history));
     
     /*-------------------------------------------------------------------------------------------*/
     /* It seems everything is okay so far, let's start the listening on socket and see           */
@@ -105,8 +115,9 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                let hist_mutex_clone = Arc::clone(&hist_mutex);
                 std::thread::spawn(move || {
-                    stream_handler::handle_client(stream);
+                    stream_handler::handle_client(stream, hist_mutex_clone);
                 });
             },
             Err(e) => {

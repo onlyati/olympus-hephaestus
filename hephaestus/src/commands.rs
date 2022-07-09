@@ -2,12 +2,15 @@ use std::fs;
 use std::path::Path;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::rc::Rc;
-use std::cell::RefCell;
+use std::thread;
 
 use crate::types::Step;
 use crate::types::StepType;
 use crate::types::Action;
+
+use std::sync::Mutex;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 
 /// Help command
@@ -30,7 +33,7 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
 /// Execute specifiec step
 /// 
 /// This function read the file, validate it then execute on same thread as it is
-pub fn exec(options: Vec<String>) -> Result<String, String> {
+pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) -> Result<String, String> {
     if options.len() < 2 {
         return Err(String::from("Workflow set and workflow also must be specified: exec <workflow-set> <workflow>\n"));
     }
@@ -44,22 +47,77 @@ pub fn exec(options: Vec<String>) -> Result<String, String> {
         Err(e) => return Err(e),
     };
 
+    let mut workflow_index = 0;
+    // Get the next workflow number
+    {
+        let mut history = history.lock().unwrap();
+        for (index, _) in history.iter() {
+            if *index > workflow_index || *index == workflow_index {
+                workflow_index = *index + 1;
+            }
+        }
+        let logs: Vec<String> = vec![format!("Workflow {} is created", workflow_index)];
+        history.insert(workflow_index, logs);
+    }
+
     /*-------------------------------------------------------------------------------------------*/
     /* Workflow is read, now start to execute its command and act accordingly                    */
     /*-------------------------------------------------------------------------------------------*/
-    for step in &mut steps {
-        let mut step = step.borrow_mut();
-        step.execute();
-        println!("Step name: {}, Status: {:?}", step.step_name, step.status);
+    let copy_hist = Arc::clone(&history);
+
+    let _ = thread::spawn(move || {
+        for step in steps.iter_mut() {
+            step.execute();
+            {
+                let mut history = copy_hist.lock().unwrap();
+                match history.get_mut(&workflow_index) {
+                    Some(v) => {
+                        v.push(format!("Step name: {}, Status: {:?}", step.step_name, step.status));
+                    },
+                    None => {
+                        println!("Internal error occured during creation {}/{}", options[0], options[1]);
+                    },
+                };
+            }
+        }
+    });
+
+    return Ok(format!("Workflow execution has started, ID is: {workflow_index}\n"));
+}
+
+/// Get status of the workflow steps
+/// 
+/// This function return with an output about the status of steps in workflow
+pub fn status(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) -> Result<String, String> {
+    if options.len() < 1 {
+        return Err(String::from("Workflow ID is not specified"));
     }
 
-    return Ok(String::from("Workflow execution has started\n"));
+    let id: u64 = match options[0].parse::<u64>() {
+        Err(e) => return Err(format!("Wrong workflow ID is specified: {:?}", e)),
+        Ok(v) => v,
+    };
+
+    {
+        let history = history.lock().unwrap();
+        let mut response = String::new();
+        match history.get(&id) {
+            Some(logs) => {
+               for log in logs {
+                    response += &log[..];
+                    response += "\n";
+               }
+               return Ok(response);
+            },
+            None => return Err(format!("No status was found for this ID: {}", id)),
+        }
+    }
 }
 
 /// Read the plan file and create a vector from its steps
 /// 
 /// This is an internal function in this module. It read and collect information about specified config file.
-fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
+fn collect_steps(path: &Path) -> Result<Vec<Step>, String> {
     /*-------------------------------------------------------------------------------------------*/
     /* Verify that file does exist                                                               */
     /*-------------------------------------------------------------------------------------------*/
@@ -71,7 +129,7 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
     let mut collect: bool = false;
     let mut step_raw: String = String::new();
 
-    let mut steps: Vec<Rc<RefCell<Step>>> = Vec::new();
+    let mut steps: Vec<Step> = Vec::new();
 
     /*-------------------------------------------------------------------------------------------*/
     /* Start to read every single line and process them                                          */
@@ -154,10 +212,9 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
                                 return Err(format!("Description is not correct, it must be a key-value pair: {:?}\n", parms));
                             }
                             
-                            for s in &steps {
-                                let act_step = s.borrow();
-                                if act_step.step_name == parms[1] {
-                                    step.parent = Some(s.clone());
+                            for s in steps.iter() {
+                                if s.step_name == parms[1] {
+                                    step.parent = Some(String::from(parms[1]));
                                     break;
                                 }
                             }
@@ -224,7 +281,7 @@ fn collect_steps(path: &Path) -> Result<Vec<Rc<RefCell<Step>>>, String> {
                         return Err(e);
                     }
 
-                    steps.push(Rc::new(RefCell::new(step)));
+                    steps.push(step);
 
                     // Curent step read is ended, reset variables
                     step_raw = String::new();
@@ -331,13 +388,11 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
         };
 
         // If file read was success, then print it into a printable format and send back
-        for step in &steps {
-            let step = step.borrow();
+        for step in steps {
             let mut line = format!("Name: {}, Type: {:?}, Description: {},", step.step_name, step.step_type, step.description);
 
             if let Some(parent) = &step.parent {
-                let parent = parent.borrow();
-                line += format!(" Parent step: {},", parent.step_name).as_str();
+                line += format!(" Parent step: {},", parent).as_str();
             }
 
             if let Some(cmd_parm) = &step.action {

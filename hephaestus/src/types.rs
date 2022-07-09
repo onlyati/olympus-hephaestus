@@ -1,6 +1,4 @@
 use std::fmt;
-use std::rc::Rc;
-use std::cell::RefCell;
 use std::process::Command;
 
 /// Structure to store information about step
@@ -9,7 +7,7 @@ pub struct Step {
     pub description: String,
     pub step_type: StepType,
     pub action: Option<Action>,
-    pub parent: Option<Rc<RefCell<Step>>>,
+    pub parent: Option<String>,
     pub status: StepStatus,
 }
 

@@ -4,6 +4,9 @@ use std::os::unix::net::UnixStream;
 use std::io::Read;
 use std::io::Write;
 use std::time::Duration;
+use std::sync::Mutex;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::commands;
 
@@ -11,7 +14,7 @@ use crate::commands;
 /// 
 /// This function is intended to handle client requests from UNIX socket.
 /// This function will reply on the stream where the data was incoming.
-pub fn handle_client(mut stream: UnixStream) {
+pub fn handle_client(mut stream: UnixStream, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) {
     let buffer = BufReader::new(&stream);
 
     let mut length_u8: Vec<u8> = Vec::with_capacity(5 * size_of::<usize>());   // Store bytes while readin, itis the message length
@@ -98,7 +101,7 @@ pub fn handle_client(mut stream: UnixStream) {
         index += 1;
     }
 
-    match command_coordinator(verb, options) {
+    match command_coordinator(verb, options, history) {
         Ok(s) => {
             let _ = stream.write_all(s.as_bytes());
         },
@@ -117,27 +120,22 @@ pub fn handle_client(mut stream: UnixStream) {
 /// If everything was cool, it return with `Ok(String)` where the string is the reply from the function.
 /// If the called function return with error, it will return with the same `Err(String)`.
 /// If command verb would not exist, it returns with `Error(String)`.
-fn command_coordinator(verb: String, options: Vec<String>) -> Result<String, String> {
+fn command_coordinator(verb: String, options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) -> Result<String, String> {
     let list_verb = String::from("list");
     let exec_verb = String::from("exec");
     let stat_verb = String::from("status");
     let help_verb = String::from("help");
-    let hist_verb = String::from("history");
 
     if verb == list_verb {
         return commands::list(options);
     }
 
     if verb == exec_verb {
-        return commands::exec(options);
-    }
-
-    if verb == hist_verb {
-        return Ok(String::from("Fetch some history"));
+        return commands::exec(options, history);
     }
 
     if verb == stat_verb {
-        return Ok(String::from("I will fetch some status"));
+        return commands::status(options, history);
     }
 
     if verb == help_verb {

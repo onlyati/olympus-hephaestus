@@ -7,6 +7,7 @@ use std::io::Write;
 use std::thread;
 use std::mem::size_of;
 
+use crate::types::Plan;
 use crate::types::Step;
 use crate::types::StepType;
 use crate::types::Action;
@@ -64,15 +65,15 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     let path = format!("plans/{}/{}.conf", options[0], options[1]);
     let path = Path::new(&path);
 
-    let mut steps = match collect_steps(path) {
+    let mut plan = match collect_steps(path) {
         Ok(v) => v,
         Err(e) => {
-            write_history(format!("Workflow initialization has failed: {}", e), workflow_index, &history);
+            write_history(format!("Workflow initialization has failed: {}", e), &String::from("ERROR"), workflow_index, &history);
             return Err(e);
         },
     };
 
-    write_history(String::from("Workflow is created"), workflow_index, &history);
+    write_history(String::from("Workflow is created"), &plan.id, workflow_index, &history);
 
     /*-------------------------------------------------------------------------------------------*/
     /* Workflow is read, now start to execute its command and act accordingly                    */
@@ -88,8 +89,8 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         /* 2. This is a recovery step and its parent step has Failed or NOK                      */
         /* Any other case, step remains NoRun status                                             */
         /*---------------------------------------------------------------------------------------*/
-        for step in steps.iter_mut() {
-            write_history(format!("{} => Pending", step.step_name), workflow_index, &copy_hist);
+        for step in plan.steps.iter_mut() {
+            write_history(format!("{} => Pending", step.step_name), &plan.id, workflow_index, &copy_hist);
 
             let mut enable = false;
 
@@ -111,7 +112,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 match step.execute() {
                     Some(log) => {
                         for line in log.lines() {
-                            write_history(String::from(line), workflow_index, &copy_hist);
+                            write_history(String::from(line), &plan.id, workflow_index, &copy_hist);
                         }
                     }
                     None => (),
@@ -119,10 +120,10 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 completion_list.insert(&step.step_name, step.clone());
             }
 
-            write_history(format!("{} => {:?}", step.step_name, step.status), workflow_index, &copy_hist);
+            write_history(format!("{} => {:?}", step.step_name, step.status), &plan.id, workflow_index, &copy_hist);
         }
 
-        write_history(String::from("Workflow is ended"), workflow_index, &copy_hist);
+        write_history(String::from("Workflow is ended"), &plan.id, workflow_index, &copy_hist);
     });
 
     /*-------------------------------------------------------------------------------------------*/
@@ -163,7 +164,7 @@ pub fn status(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>
 /// Read the plan file and create a vector from its steps
 /// 
 /// This is an internal function in this module. It read and collect information about specified config file.
-fn collect_steps(path: &Path) -> Result<Vec<Step>, String> {
+fn collect_steps(path: &Path) -> Result<Plan, String> {
     /*-------------------------------------------------------------------------------------------*/
     /* Verify that file does exist                                                               */
     /*-------------------------------------------------------------------------------------------*/
@@ -176,6 +177,7 @@ fn collect_steps(path: &Path) -> Result<Vec<Step>, String> {
     let mut step_raw: String = String::new();
 
     let mut steps: Vec<Step> = Vec::new();
+    let mut plan_id: (bool, String) = (false, String::new());
 
     /*-------------------------------------------------------------------------------------------*/
     /* Start to read every single line and process them                                          */
@@ -212,6 +214,13 @@ fn collect_steps(path: &Path) -> Result<Vec<Step>, String> {
                 }
             }
 
+            // Beginning of a plan descriptor
+            if line_content.len() >= 5 {
+                if &line_content[0..5] == "<plan" {
+                    collect = true;
+                }
+            }
+
             /*-----------------------------------------------------------------------------------*/
             /* There was an open tag and we need to collect and process the step                 */
             /*-----------------------------------------------------------------------------------*/
@@ -219,6 +228,32 @@ fn collect_steps(path: &Path) -> Result<Vec<Step>, String> {
                 // Append current data into variable
                 step_raw += " ";
                 step_raw +=  &line_content[..].trim();
+
+                // Porcess plan tag
+                if line_content.contains("</plan>") {
+                    for word in step_raw.split_whitespace() {
+                        // It is the plan descriptor
+                        if word == "<plan" {
+                            plan_id.0 = true;
+                            continue;
+                        }
+
+                        if plan_id.0 && word.contains("id=\"") {
+                            let parms: Vec<&str> = word.split("\"").collect();
+                            if parms.len() < 2 {
+                                return Err(format!("Name is not correct, it must be a key-value pair: {:?}", parms));
+                            }
+                            plan_id.1 = String::from(parms[1]);
+                        }
+
+                        if word.contains("</plan>") && plan_id.0 {
+                            plan_id.0 = false;
+                        }
+                    }
+
+                    step_raw = String::new();
+                    collect = false;
+                }
 
                 // If close tag is present, it means we are end of step, start to process collected data
                 if line_content.contains("</step>") || line_content.contains("</recovery>") {
@@ -337,7 +372,11 @@ fn collect_steps(path: &Path) -> Result<Vec<Step>, String> {
         }
     }
 
-    return Ok(steps);
+    if plan_id.1.is_empty() {
+        return Err(String::from("Plan ID is missing"));
+    }
+
+    return Ok(Plan::new(plan_id.1, steps));
 }
 
 /// List command
@@ -428,13 +467,17 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
         let path = Path::new(&path);
 
         // Let's try to read the specified file
-        let steps = match collect_steps(path) {
+        let plan = match collect_steps(path) {
             Ok(v) => v,
-            Err(e) => return Err(e),
+            Err(e) => return Err(format!("{}/{}: {}", std::env::current_dir().unwrap().display(), path.display(), e)),
         };
 
+        response += "Plan ID: ";
+        response += &plan.id[..];
+        response += "\n";
+
         // If file read was success, then print it into a printable format and send back
-        for step in steps {
+        for step in plan.steps {
             let mut line = format!("Name: {}, Type: {:?}, Description: {},", step.step_name, step.step_type, step.description);
 
             if let Some(parent) = &step.parent {
@@ -515,11 +558,12 @@ pub fn dump(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
 }
 
 /// Function to write inot history hashmap
-fn write_history(text: String, index: u64, history: &Arc<Mutex<HashMap<u64, Vec<String>>>>) {
+fn write_history(text: String, plan_name: &String, index: u64, history: &Arc<Mutex<HashMap<u64, Vec<String>>>>) {
     let dt = Local::now();
     let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
     
-    let text = format!("{} {:10} {}", timestamp, index, text);
+    let job = format!("{}({})", plan_name, index);
+    let text = format!("{} {:32} {}", timestamp, job, text);
 
     let mut history = history.lock().unwrap();
     match history.get_mut(&index) {

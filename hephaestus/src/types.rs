@@ -1,10 +1,15 @@
 use std::fmt;
 use std::process::Command;
-use std::collections::HashMap;
 
 pub struct Plan {
     pub id: String,
-    pub steps: HashMap<u64, Step>,
+    pub steps: Vec<Step>,
+}
+
+impl Plan {
+    pub fn new(id: String, steps: Vec<Step>) -> Plan {
+        return Plan { id: id, steps: steps }
+    }
 }
 
 /// Structure to store information about step

@@ -49,29 +49,30 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     /*-------------------------------------------------------------------------------------------*/
     /* Read and verify workflow file                                                             */
     /*-------------------------------------------------------------------------------------------*/
-    let path = format!("plans/{}/{}.conf", options[0], options[1]);
-    let path = Path::new(&path);
-
-    let mut steps = match collect_steps(path) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-
     let mut workflow_index = 0;
-    let dt = Local::now();
-    let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
 
     // Get the next workflow number
     {
-        let mut history = history.lock().unwrap();
+        let history = history.lock().unwrap();
         for (index, _) in history.iter() {
             if *index >= workflow_index {
                 workflow_index = *index + 1;
             }
         }
-        let logs: Vec<String> = vec![format!("{} {:10} Workflow is created", timestamp, workflow_index)];
-        history.insert(workflow_index, logs);
     }
+
+    let path = format!("plans/{}/{}.conf", options[0], options[1]);
+    let path = Path::new(&path);
+
+    let mut steps = match collect_steps(path) {
+        Ok(v) => v,
+        Err(e) => {
+            write_history(format!("Workflow initialization has failed: {}", e), workflow_index, &history);
+            return Err(e);
+        },
+    };
+
+    write_history(String::from("Workflow is created"), workflow_index, &history);
 
     /*-------------------------------------------------------------------------------------------*/
     /* Workflow is read, now start to execute its command and act accordingly                    */
@@ -88,22 +89,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         /* Any other case, step remains NoRun status                                             */
         /*---------------------------------------------------------------------------------------*/
         for step in steps.iter_mut() {
-            let dt = Local::now();
-            let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
-            {
-                let mut history = copy_hist.lock().unwrap();
-                match history.get_mut(&workflow_index) {
-                    Some(v) => {
-                        v.push(format!("{} {:10} {} => Pending", timestamp, workflow_index, step.step_name));
-                    },
-                    None => {
-                        // Not ideal but it can happen that dump log has run while workflow was executed and hashmap has been erased
-                        // It needs to create the key again
-                        let msg: Vec<String> = vec![format!("{} {:10} {} => Pending", timestamp, workflow_index, step.step_name)];
-                        history.insert(workflow_index, msg);
-                    },
-                };
-            }
+            write_history(format!("{} => Pending", step.step_name), workflow_index, &copy_hist);
 
             let mut enable = false;
 
@@ -122,44 +108,21 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
             }
 
             if enable {
-                step.execute();
+                match step.execute() {
+                    Some(log) => {
+                        for line in log.lines() {
+                            write_history(String::from(line), workflow_index, &copy_hist);
+                        }
+                    }
+                    None => (),
+                }
                 completion_list.insert(&step.step_name, step.clone());
             }
 
-            let dt = Local::now();
-            let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
-            {
-                let mut history = copy_hist.lock().unwrap();
-                match history.get_mut(&workflow_index) {
-                    Some(v) => {
-                        v.push(format!("{} {:10} {} => {:?}", timestamp, workflow_index, step.step_name, step.status));
-                    },
-                    None => {
-                        // Not ideal but it can happen that dump log has run while workflow was executed and hashmap has been erased
-                        // It needs to create the key again
-                        let msg: Vec<String> = vec![format!("{} {:10} {} => {:?}", timestamp, workflow_index, step.step_name, step.status)];
-                        history.insert(workflow_index, msg);
-                    },
-                };
-            }
+            write_history(format!("{} => {:?}", step.step_name, step.status), workflow_index, &copy_hist);
         }
 
-        let dt = Local::now();
-        let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
-        {
-            let mut history = copy_hist.lock().unwrap();
-            match history.get_mut(&workflow_index) {
-                Some(v) => {
-                    v.push(format!("{} {:10} Workflow is ended", timestamp, workflow_index));
-                },
-                None => {
-                    // Not ideal but it can happen that dump log has run while workflow was executed and hashmap has been erased
-                        // It needs to create the key again
-                    let msg: Vec<String> = vec![format!("{} {:10} Workflow is ended", timestamp, workflow_index)];
-                    history.insert(workflow_index, msg);
-                },
-            };
-        }
+        write_history(String::from("Workflow is ended"), workflow_index, &copy_hist);
     });
 
     /*-------------------------------------------------------------------------------------------*/
@@ -549,4 +512,25 @@ pub fn dump(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     }
 
     return Ok(String::from("OK"));
+}
+
+/// Function to write inot history hashmap
+fn write_history(text: String, index: u64, history: &Arc<Mutex<HashMap<u64, Vec<String>>>>) {
+    let dt = Local::now();
+    let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
+    
+    let text = format!("{} {:10} {}", timestamp, index, text);
+
+    let mut history = history.lock().unwrap();
+    match history.get_mut(&index) {
+        Some(v) => {
+            v.push(text);
+        },
+        None => {
+            // Not ideal but it can happen that dump log has run while workflow was executed and hashmap has been erased
+            // It needs to create the key again
+            let msg: Vec<String> = vec![text];
+            history.insert(index, msg);
+        },
+    };
 }

@@ -1,5 +1,11 @@
 use std::fmt;
 use std::process::Command;
+use std::collections::HashMap;
+
+pub struct Plan {
+    pub id: String,
+    pub steps: HashMap<u64, Step>,
+}
 
 /// Structure to store information about step
 #[derive(Clone)]
@@ -62,14 +68,16 @@ impl Step {
     }
 
     /// Execute the command from the step and change its status accordingly
-    pub fn execute(&mut self) {
+    pub fn execute(&mut self) -> Option<String> {
+        let mut text: Option<String> = None;
+
         match &self.action {
             Some(act) => {
                 let cmd = match &act.cmd {
                     Some(v) => v.clone(),
                     None => {
                         self.status = StepStatus::Nok;
-                        return;        
+                        return None;
                     } 
                 };
 
@@ -87,15 +95,22 @@ impl Step {
                         else {
                             self.status = StepStatus::Nok;
                         }
+
+                        text = match String::from_utf8(o.stdout) {
+                            Ok(r) => Some(r),
+                            Err(_) => None,
+                        }
                     },
                     Err(_) => self.status = StepStatus::Failed,
                 }
             }
             None => {
                 self.status = StepStatus::Nok;
-                return;
+                return None;
             }
         };
+
+        return text;
     }
 }
 

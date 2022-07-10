@@ -1,0 +1,126 @@
+2022-07-10 12:07:49          2 Workflow is created
+2022-07-10 12:07:49          2 step01 => Pending
+2022-07-10 12:07:59          2 step01 => OK
+2022-07-10 12:07:59          2 step02 => Pending
+2022-07-10 12:07:59          2 total 180
+2022-07-10 12:07:59          2 prwx------ 1 root                root                   0 Jun 17 19:28 clr-debug-pipe-3303853-43163814-in
+2022-07-10 12:07:59          2 prwx------ 1 root                root                   0 Jun 17 19:28 clr-debug-pipe-3303853-43163814-out
+2022-07-10 12:07:59          2 prwx------ 1 root                root                   0 Jun 12 19:34 clr-debug-pipe-581-553-in
+2022-07-10 12:07:59          2 prwx------ 1 root                root                   0 Jun 12 19:34 clr-debug-pipe-581-553-out
+2022-07-10 12:07:59          2 prwx------ 1 root                root                   0 Jun 12 19:34 clr-debug-pipe-832-1055-in
+2022-07-10 12:07:59          2 prwx------ 1 root                root                   0 Jun 12 19:34 clr-debug-pipe-832-1055-out
+2022-07-10 12:07:59          2 drwx------ 3 www-data            www-data            4096 Jun 29 19:33 coolwsd.FMQFGOKTwz
+2022-07-10 12:07:59          2 -rw-r--r-- 1 www-data            www-data               8 Jun 29 19:33 coolwsd.pid
+2022-07-10 12:07:59          2 srw------- 1 root                root                   0 Jun 17 19:28 dotnet-diagnostic-3303853-43163814-socket
+2022-07-10 12:07:59          2 srw------- 1 root                root                   0 Jun 12 19:34 dotnet-diagnostic-581-553-socket
+2022-07-10 12:07:59          2 srw------- 1 root                root                   0 Jun 12 19:34 dotnet-diagnostic-832-1055-socket
+2022-07-10 12:07:59          2 drwxr-xr-x 3 root                root                4096 Jun 17 19:27 dotnet-installer
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 14 11:15 globvar-1100511
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 21 03:30 globvar-1149671
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 27 19:30 globvar-1205236
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 21 06:15 globvar-1220354
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 21 10:00 globvar-1314599
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  2 19:15 globvar-135407
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 21 12:15 globvar-1373539
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 21 16:15 globvar-1475423
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 28 07:15 globvar-1505289
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  5 04:30 globvar-1594265
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 28 10:45 globvar-1594313
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  5 09:30 globvar-1719429
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 28 16:00 globvar-1728135
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 28 19:45 globvar-1824394
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  5 14:45 globvar-1852309
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 22 07:30 globvar-1863886
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  5 19:45 globvar-1976761
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  5 20:00 globvar-1983067
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 22 16:00 globvar-2080186
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  9 18:45 globvar-240778
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 29 21:30 globvar-2555895
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 30 03:45 globvar-2713689
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 17 05:30 globvar-2787004
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 17 07:15 globvar-2831566
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 24 00:15 globvar-2902517
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  1 00:45 globvar-3248140
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 17 22:00 globvar-3368012
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 24 18:45 globvar-3384394
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  8 02:30 globvar-3391066
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  8 03:00 globvar-3403382
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 24 19:45 globvar-3409126
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  1 08:30 globvar-3444356
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 13 09:15 globvar-346584
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 18 05:00 globvar-3554352
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  9 22:45 globvar-355882
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  8 12:15 globvar-3640809
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 18 12:15 globvar-3741135
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  8 16:15 globvar-3743341
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  1 20:30 globvar-3749775
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 19 21:30 globvar-384652
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  2 00:30 globvar-3851213
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 18 22:15 globvar-3993223
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  2 08:15 globvar-4049140
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  2 08:45 globvar-4061554
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 25 16:45 globvar-4107877
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 25 17:00 globvar-4113870
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 19 22:45 globvar-417119
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul  9 09:45 globvar-4185379
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 26 16:00 globvar-505231
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 20 08:15 globvar-660346
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 13 19:00 globvar-688522
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 20 15:30 globvar-844496
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jun 27 06:45 globvar-880638
+2022-07-10 12:07:59          2 prw-rw-rw- 1 root                root                   0 Jul 10 12:00 globvar-in
+2022-07-10 12:07:59          2 srwxrwxr-x 1 root                olympus                0 Jul 10 12:07 hephaestus.sock
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwg6.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwg7.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwg8.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwg9.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwga.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgb.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgc.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgd.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwge.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgf.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgg.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgh.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgi.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgj.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgk.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgl.tmp
+2022-07-10 12:07:59          2 drwx------ 3 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgm.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgn.tmp
+2022-07-10 12:07:59          2 drwx------ 3 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgo.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:34 lu2506730oagwgp.tmp
+2022-07-10 12:07:59          2 drwx------ 3 www-data            www-data            4096 Jun 29 19:42 lu2506730oagwgq.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:42 lu2506730oagwgr.tmp
+2022-07-10 12:07:59          2 drwx------ 3 www-data            www-data            4096 Jun 29 19:43 lu2506730oagwgs.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:43 lu2506730oagwgt.tmp
+2022-07-10 12:07:59          2 drwx------ 3 www-data            www-data            4096 Jun 29 19:43 lu2506730oagwgu.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:43 lu2506730oagwgv.tmp
+2022-07-10 12:07:59          2 drwx------ 3 www-data            www-data            4096 Jun 29 19:43 lu2506730oagwgw.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:43 lu2506730oagwgx.tmp
+2022-07-10 12:07:59          2 drwx------ 3 www-data            www-data            4096 Jun 29 19:44 lu2506730oagwgy.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:44 lu2506730oagwgz.tmp
+2022-07-10 12:07:59          2 drwx------ 2 www-data            www-data            4096 Jun 29 19:44 lu2506730oagwh0.tmp
+2022-07-10 12:07:59          2 -rw-r--r-- 1 root                root                1212 Jul  6 11:14 plexinstaller.log
+2022-07-10 12:07:59          2 drwxr-xr-x 2 plex                plex                4096 Jul  6 11:14 pms-e1435132-b697-428d-9098-99460c0a104c
+2022-07-10 12:07:59          2 drwx------ 3 root                root                4096 Jul 10 06:42 systemd-private-0fa640cf029c420ea9e504e2beb12f0f-apache2.service-kgQ9yg
+2022-07-10 12:07:59          2 drwx------ 3 root                root                4096 Jun 12 19:34 systemd-private-0fa640cf029c420ea9e504e2beb12f0f-corosync.service-nIZgqh
+2022-07-10 12:07:59          2 drwx------ 3 root                root                4096 Jun 12 19:34 systemd-private-0fa640cf029c420ea9e504e2beb12f0f-haveged.service-cKNtGh
+2022-07-10 12:07:59          2 drwx------ 3 root                root                4096 Jun 12 19:34 systemd-private-0fa640cf029c420ea9e504e2beb12f0f-ModemManager.service-SSFMyi
+2022-07-10 12:07:59          2 drwx------ 3 root                root                4096 Jun 12 19:34 systemd-private-0fa640cf029c420ea9e504e2beb12f0f-redis-server.service-goTTij
+2022-07-10 12:07:59          2 drwx------ 3 root                root                4096 Jun 12 19:34 systemd-private-0fa640cf029c420ea9e504e2beb12f0f-systemd-logind.service-Ai0M3g
+2022-07-10 12:07:59          2 drwx------ 3 root                root                4096 Jun 12 19:34 systemd-private-0fa640cf029c420ea9e504e2beb12f0f-systemd-timesyncd.service-nWtatj
+2022-07-10 12:07:59          2 drwx------ 3 root                root                4096 Jul  6 11:06 systemd-private-0fa640cf029c420ea9e504e2beb12f0f-upower.service-UXnVng
+2022-07-10 12:07:59          2 -rw-r--r-- 1 debian-transmission debian-transmission    0 Jul  9 17:44 tr_session_id_QQnxgjPXZguUwpfnabdc0LDKbtB2VYmknjHI16Ys6tUh7ezK
+2022-07-10 12:07:59          2 -rw-r--r-- 1 debian-transmission debian-transmission    0 Jul  9 23:53 tr_session_id_tGGGODpOv3yD28zgYEfz2fSExBf2ETmJMPa4HWr3t7jSlFSz
+2022-07-10 12:07:59          2 drwxr-xr-x 2 ati                 ati                 4096 Jul  9 14:06 vscode-typescript1000
+2022-07-10 12:07:59          2 step02 => OK
+2022-07-10 12:07:59          2 step03 => Pending
+2022-07-10 12:08:09          2 step03 => OK
+2022-07-10 12:08:09          2 fail02 => Pending
+2022-07-10 12:08:09          2 fail02 => Did not run
+2022-07-10 12:08:09          2 Workflow is ended
+2022-07-10 12:07:43          1 Workflow initialization has failed: Recovery step must have parent!
+
+2022-07-10 12:07:29          0 Workflow initialization has failed: Reference as parent for stepNN but does not exist yet!
+

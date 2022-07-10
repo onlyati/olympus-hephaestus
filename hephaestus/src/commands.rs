@@ -538,14 +538,11 @@ pub fn dump(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         let mut keys: Vec<(u64, String)> = Vec::with_capacity(history.len() * (size_of::<u64>() + size_of::<String>()));
 
         for (index, logs) in history.iter() {
-            if logs.len() > 1 {
+            if logs.len() > 0 {
                 let words: Vec<&str> = logs[0].split_whitespace().collect();
                 let file_name = words[2].replace("(", "_");
                 let file_name = file_name.replace(")", "");
-                let file_name = file_name + ".log";
-
-                let dt = Local::now();
-                let path = format!("logs/{}_{}-{:02}-{:02}_{:02}:{:02}:{:02}.log", file_name, dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
+                let path = format!("logs/{}_{}_{}.log", file_name, words[0], words[1]);
 
                 keys.push((*index, path));
             }

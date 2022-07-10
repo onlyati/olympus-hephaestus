@@ -532,32 +532,45 @@ pub fn dump(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         return Err(String::from("Invalid dump option"));
     }
 
-    let dt = Local::now();
-    let path = format!("logs/{}-{:02}-{:02}#{:02}:{:02}:{:02}.log", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
-    let path = Path::new(&path);
-    let mut log_file = File::create(path).unwrap();
-
     {
         let mut history = history.lock().unwrap();
         
-        let mut keys: Vec<u64> = Vec::with_capacity(history.len() * size_of::<u64>());
+        let mut keys: Vec<(u64, String)> = Vec::with_capacity(history.len() * (size_of::<u64>() + size_of::<String>()));
 
-        for (index, logs) in history.iter_mut() {
-            keys.push(*index);
-            for log in logs {
-                writeln!(log_file, "{}", log).unwrap();
+        for (index, logs) in history.iter() {
+            if logs.len() > 1 {
+                let words: Vec<&str> = logs[0].split_whitespace().collect();
+                let file_name = words[2].replace("(", "_");
+                let file_name = file_name.replace(")", "");
+                let file_name = file_name + ".log";
+
+                let dt = Local::now();
+                let path = format!("logs/{}_{}-{:02}-{:02}_{:02}:{:02}:{:02}.log", file_name, dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());
+
+                keys.push((*index, path));
+            }
+        }
+
+        for key in &keys {
+            if let Some(logs) = history.get(&key.0) {
+                let path = Path::new(&key.1);
+                let mut log_file = File::create(path).unwrap();
+
+                for log in logs {
+                    writeln!(log_file, "{}", log).unwrap();
+                }
             }
         }
 
         for key in keys {
-            history.remove(&key).unwrap();
+            history.remove(&key.0).unwrap();
         }
     }
 
     return Ok(String::from("OK"));
 }
 
-/// Function to write inot history hashmap
+/// Function to write into history hashmap
 fn write_history(text: String, plan_name: &String, index: u64, history: &Arc<Mutex<HashMap<u64, Vec<String>>>>) {
     let dt = Local::now();
     let timestamp = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second());

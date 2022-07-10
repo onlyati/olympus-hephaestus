@@ -125,7 +125,7 @@ fn command_coordinator(verb: String, options: Vec<String>, history: Arc<Mutex<Ha
     let exec_verb = String::from("exec");
     let stat_verb = String::from("status");
     let help_verb = String::from("help");
-    let flow_verb = String::from("workflows");
+    let flow_verb = String::from("plans");
     let dump_verb = String::from("dump");
 
     if verb == list_verb {

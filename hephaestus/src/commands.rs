@@ -28,12 +28,12 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
     let mut response = String::new();
 
     response = response + "Possible actions:\n";
-    response = response + "Retrieve list about workflow sets:             list \n";
-    response = response + "Retrieve list about workflows within a set:    list <workflow-set>\n";
-    response = response + "Retrive details about workflow:                list <workflow-set> <workflow>\n";
-    response = response + "List workflow IDs:                             workflows\n";
-    response = response + "Status of workflow in historical data:         status <workflow-id>\n";
-    response = response + "Request to execute a workflow:                 exec <workflow-set> <workflow>\n";
+    response = response + "Retrieve list about plan sets:                 list \n";
+    response = response + "Retrieve list about plan within a set:         list <plan-set>\n";
+    response = response + "Retrive details about plan:                    list <plan-set> <plan>\n";
+    response = response + "List plan IDs:                                 plans\n";
+    response = response + "Status of plan in historical data:             status <plan-id>\n";
+    response = response + "Request to execute a plan:                     exec <plan-set> <plan>\n";
     response = response + "Dump log from memory:                          dump log\n";
 
     return Ok(response);
@@ -44,20 +44,20 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
 /// This function read the file, validate it then execute on same thread as it is
 pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) -> Result<String, String> {
     if options.len() < 2 {
-        return Err(String::from("Workflow set and workflow also must be specified: exec <workflow-set> <workflow>\n"));
+        return Err(String::from("Plan set and plan also must be specified: exec <plan-set> <plan>\n"));
     }
     
     /*-------------------------------------------------------------------------------------------*/
-    /* Read and verify workflow file                                                             */
+    /* Read and verify plan file                                                                 */
     /*-------------------------------------------------------------------------------------------*/
-    let mut workflow_index = 0;
+    let mut plan_index = 0;
 
-    // Get the next workflow number
+    // Get the next plan number
     {
         let history = history.lock().unwrap();
         for (index, _) in history.iter() {
-            if *index >= workflow_index {
-                workflow_index = *index + 1;
+            if *index >= plan_index {
+                plan_index = *index + 1;
             }
         }
     }
@@ -68,15 +68,15 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
     let mut plan = match collect_steps(path) {
         Ok(v) => v,
         Err(e) => {
-            write_history(format!("Workflow initialization has failed: {}", e), &String::from("ERROR"), workflow_index, &history);
+            write_history(format!("Plan initialization has failed: {}", e), &String::from("ERROR"), plan_index, &history);
             return Err(e);
         },
     };
 
-    write_history(String::from("Workflow is created"), &plan.id, workflow_index, &history);
+    write_history(String::from("Plan is created"), &plan.id, plan_index, &history);
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Workflow is read, now start to execute its command and act accordingly                    */
+    /* Plan is read, now start to execute its command and act accordingly                        */
     /*-------------------------------------------------------------------------------------------*/
     let copy_hist = Arc::clone(&history);
 
@@ -90,7 +90,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         /* Any other case, step remains NoRun status                                             */
         /*---------------------------------------------------------------------------------------*/
         for step in plan.steps.iter_mut() {
-            write_history(format!("{} => Pending", step.step_name), &plan.id, workflow_index, &copy_hist);
+            write_history(format!("{} => Pending", step.step_name), &plan.id, plan_index, &copy_hist);
 
             let mut enable = false;
 
@@ -112,7 +112,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 match step.execute() {
                     Some(log) => {
                         for line in log.lines() {
-                            write_history(String::from(line), &plan.id, workflow_index, &copy_hist);
+                            write_history(String::from(line), &plan.id, plan_index, &copy_hist);
                         }
                     }
                     None => (),
@@ -120,28 +120,28 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 completion_list.insert(&step.step_name, step.clone());
             }
 
-            write_history(format!("{} => {:?}", step.step_name, step.status), &plan.id, workflow_index, &copy_hist);
+            write_history(format!("{} => {:?}", step.step_name, step.status), &plan.id, plan_index, &copy_hist);
         }
 
-        write_history(String::from("Workflow is ended"), &plan.id, workflow_index, &copy_hist);
+        write_history(String::from("Plan is ended"), &plan.id, plan_index, &copy_hist);
     });
 
     /*-------------------------------------------------------------------------------------------*/
     /* Execution started asyncronically, return to user that it has been started                 */
     /*-------------------------------------------------------------------------------------------*/
-    return Ok(format!("Workflow execution has started, ID is: {workflow_index}\n"));
+    return Ok(format!("Plan execution has started, ID is: {plan_index}\n"));
 }
 
-/// Get status of the workflow steps
+/// Get status of the plan steps
 /// 
-/// This function return with an output about the status of steps in workflow
+/// This function return with an output about the status of steps in plan
 pub fn status(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) -> Result<String, String> {
     if options.len() < 1 {
-        return Err(String::from("Workflow ID is not specified"));
+        return Err(String::from("Plan ID is not specified"));
     }
 
     let id: u64 = match options[0].parse::<u64>() {
-        Err(e) => return Err(format!("Wrong workflow ID is specified: {:?}", e)),
+        Err(e) => return Err(format!("Wrong plan ID is specified: {:?}", e)),
         Ok(v) => v,
     };
 
@@ -383,14 +383,14 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
 /// 
 /// This function is called if a list command is received.
 /// It is possible to list:
-/// - Workflow sets
-/// - Workflows within a specified set
-/// - Content of a workflow
+/// - Plan sets
+/// - Plans within a specified set
+/// - Content of a plan
 pub fn list(options: Vec<String>) -> Result<String, String> {
     let mut response = String::new();
 
     /*-------------------------------------------------------------------------------------------*/
-    /* List workflow sets                                                                        */
+    /* List plan sets                                                                            */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 0 {
         let paths = match fs::read_dir("plans") {
@@ -406,7 +406,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
                     let full_path = format!("{}", path.display());
                     match full_path.split("/").collect::<Vec<&str>>().last() {
                         Some(v) => response = response + v + "\n",
-                        None => return Err(String::from("Internal error during workflow set scan\n")),
+                        None => return Err(String::from("Internal error during plan set scan\n")),
                     }
                 }
             }
@@ -416,7 +416,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* List workflows in a workflow set                                                          */
+    /* List plans in a plan set                                                                  */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 1 {
         let paths = match fs::read_dir(format!("plans/{}", options[0])) {
@@ -432,13 +432,13 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
                     let full_path = format!("{}", path.display());
                     let full_path: &str = match full_path.split("/").collect::<Vec<&str>>().last() {
                         Some(v) => v,
-                        None => return Err(String::from("Internal error during workflow file scan\n")),
+                        None => return Err(String::from("Internal error during plan file scan\n")),
                     };
 
                     let split_path: Vec<&str> = full_path.split(".").collect();
                     
                     if split_path.len() == 0 {
-                        return Err(String::from("Internal error during workflow set scan\n"));
+                        return Err(String::from("Internal error during plan set scan\n"));
                     }
 
                     if split_path[split_path.len() - 1] != "conf" {
@@ -460,7 +460,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Read all workflow file and send it back                                                   */
+    /* Read all plan file and send it back                                                       */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 2 {
         let path = format!("plans/{}/{}.conf", options[0], options[1]);
@@ -581,7 +581,7 @@ fn write_history(text: String, plan_name: &String, index: u64, history: &Arc<Mut
             v.push(text);
         },
         None => {
-            // Not ideal but it can happen that dump log has run while workflow was executed and hashmap has been erased
+            // Not ideal but it can happen that dump log has run while plan was executed and hashmap has been erased
             // It needs to create the key again
             let msg: Vec<String> = vec![text];
             history.insert(index, msg);

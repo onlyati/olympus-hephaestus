@@ -102,7 +102,7 @@ fn main() {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Create a list for history and number to track workflow IDs. They must be mutexes as they  */
+    /* Create a list for history and number to track plan IDs. They must be mutexes as they      */
     /* will be handled by threads.                                                               */
     /*-------------------------------------------------------------------------------------------*/
     let history: HashMap<u64, Vec<String>> = HashMap::new();

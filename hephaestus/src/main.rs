@@ -19,12 +19,17 @@ fn main() {
     /* Read argumen then check that work directory exist. If it exist set it up work directory . */
     /*-------------------------------------------------------------------------------------------*/
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
+    if args.len() < 2 {
         println!("Working directory must be specified!");
         exit(1);
     }
 
-    let work_dir = Path::new(&args[1]);
+    let mut dev_mode: bool = false;
+    if args[1] == "--dev" {
+        dev_mode = true;
+    }
+
+    let work_dir = Path::new(&args[args.len() - 1]);
 
     if !work_dir.exists() {
         println!("Working directory does not exist: {}", work_dir.display());
@@ -65,7 +70,11 @@ fn main() {
     /*-------------------------------------------------------------------------------------------*/
     /* Prepare UNIX socket for listening                                                         */
     /*-------------------------------------------------------------------------------------------*/
-    let socket_path = Path::new("/tmp/hephaestus.sock");
+    let socket_path = if dev_mode { 
+        Path::new("/tmp/hephaestus-dev.sock") 
+    } else { 
+        Path::new("/tmp/hephaestus.sock") 
+    };
 
     if socket_path.exists() {
         if let Err(e) = fs::remove_file(socket_path) {

@@ -2,6 +2,7 @@ use std::os::unix::net::UnixStream;
 use std::io::prelude::*;
 use std::process::exit;
 use std::env;
+use std::path::Path;
 
 fn main() {
     let mut args: Vec<String> = env::args().collect();
@@ -11,6 +12,13 @@ fn main() {
     }
 
     args.remove(0);
+
+    let socket = if args[0] == "--dev" {
+        args.remove(0);
+        Path::new("/tmp/hephaestus-dev.sock")
+    } else {
+        Path::new("/tmp/hephaestus.sock")
+    };
 
     let mut message = String::new();
     for arg in args {
@@ -22,7 +30,7 @@ fn main() {
 
     let message = format!("{} {}", count, message);
 
-    let mut stream = match UnixStream::connect("/tmp/hephaestus.sock") {
+    let mut stream = match UnixStream::connect(socket) {
         Ok(v) => v,
         Err(e) => {
             println!("Error during connect to socket: {e:?}");

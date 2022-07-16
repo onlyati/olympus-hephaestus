@@ -18,6 +18,7 @@ pub struct Step {
     pub step_name: String,
     pub description: String,
     pub step_type: StepType,
+    pub user: Option<String>,
     pub action: Option<Action>,
     pub parent: Option<String>,
     pub status: StepStatus,
@@ -32,6 +33,7 @@ impl Step {
             step_name: String::new(),
             description: String::new(),
             step_type: StepType::None,
+            user: None,
             action: None,
             parent: None,
             status: StepStatus::NotRun,
@@ -86,7 +88,16 @@ impl Step {
                     } 
                 };
 
-                let mut cmd = Command::new(cmd);
+                let mut cmd: Command = match &self.user {
+                    Some(u) => {
+                        let mut b_cmd = Command::new("/usr/bin/sudo");
+                        b_cmd.arg("-u");
+                        b_cmd.arg(u);
+                        b_cmd.arg(cmd);
+                        b_cmd
+                    },
+                    None => Command::new(cmd)
+                };
 
                 for arg in &act.args {
                     cmd.arg(arg);
@@ -104,6 +115,16 @@ impl Step {
                         text = match String::from_utf8(o.stdout) {
                             Ok(r) => Some(r),
                             Err(_) => None,
+                        };
+
+                        match String::from_utf8(o.stderr) {
+                            Ok(r) => {
+                                match text {
+                                    Some(ref mut v) => *v += &r[..],
+                                    None => text = Some(r),
+                                }
+                            },
+                            Err(_) => (),
                         }
                     },
                     Err(_) => self.status = StepStatus::Failed,

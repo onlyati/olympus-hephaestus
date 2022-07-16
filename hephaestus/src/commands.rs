@@ -277,6 +277,14 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
                             continue;
                         }
 
+                        if word.contains("user=\"") {
+                            let parms: Vec<&str> = word.split("\"").collect();
+                            if parms.len() < 2 {
+                                return Err(format!("Name is not correct, it must be a key-value pair: {:?}", parms));
+                            }
+                            step.user = Some(String::from(parms[1]));
+                        }
+
                         // Parse the name of the step
                         if word.contains("name=\"") {
                             let parms: Vec<&str> = word.split("\"").collect();
@@ -482,6 +490,12 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
 
             if let Some(parent) = &step.parent {
                 line += format!(" Parent step: {},", parent).as_str();
+            }
+
+            if let Some(v) = step.user {
+                line += " User: ";
+                line += &v[..];
+                line += ",";
             }
 
             if let Some(cmd_parm) = &step.action {

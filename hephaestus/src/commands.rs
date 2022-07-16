@@ -30,7 +30,8 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
     response = response + "Possible actions:\n";
     response = response + "Retrieve list about plan sets:                 list \n";
     response = response + "Retrieve list about plan within a set:         list <plan-set>\n";
-    response = response + "Retrive details about plan:                    list <plan-set> <plan>\n";
+    response = response + "Retrive information about plan:                list <plan-set> <plan>\n";
+    response = response + "Retrive details about plan:                    list -e <plan-set> <plan>\n";
     response = response + "List plan IDs:                                 plans\n";
     response = response + "Status of plan in historical data:             status <plan-id>\n";
     response = response + "Request to execute a plan:                     exec <plan-set> <plan>\n";
@@ -468,10 +469,46 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Read all plan file and send it back                                                       */
+    /* Read plan files and send summary info back                                                */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 2 {
         let path = format!("plans/{}/{}.conf", options[0], options[1]);
+        let path = Path::new(&path);
+
+        // Let's try to read the specified file
+        let plan = match collect_steps(path) {
+            Ok(v) => v,
+            Err(e) => return Err(format!("{}/{}: {}", std::env::current_dir().unwrap().display(), path.display(), e)),
+        };
+
+        response += "ID: ";
+        response += &plan.id[..];
+        response += "\n";
+
+        response += "Step     | Type     | Parent   | Description\n";
+        response += "---------+----------+----------+-------------\n";
+
+        for step in plan.steps {
+            let parent = match step.parent {
+                Some(v) => v,
+                None => String::new(),
+            };
+            let step_type = format!("{:?}", step.step_type);
+            response += format!("{:8} | {:8} | {:8} | {}\n", step.step_name, step_type, parent, step.description).as_str();
+        }
+
+        return Ok(response);
+    }
+
+    /*-------------------------------------------------------------------------------------------*/
+    /* Read all plan file and send it back                                                       */
+    /*-------------------------------------------------------------------------------------------*/
+    if options.len() == 3 {
+        if options[0] != "-e" {
+            return Err(format!("For expanded details type -e as list parameter instead of {}", options[0]));
+        }
+
+        let path = format!("plans/{}/{}.conf", options[1], options[2]);
         let path = Path::new(&path);
 
         // Let's try to read the specified file
@@ -484,32 +521,33 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
         response += &plan.id[..];
         response += "\n";
 
+        response += "Step     | Type     | User      | Parent   | Description                              | Command\n";
+        response += "---------+----------+-----------+----------+------------------------------------------+---------\n";
+
         // If file read was success, then print it into a printable format and send back
         for step in plan.steps {
-            let mut line = format!("Name: {}, Type: {:?}, Description: {},", step.step_name, step.step_type, step.description);
+            let parent = match step.parent {
+                Some(v) => v,
+                None => String::new(),
+            };
+            let user = match step.user {
+                Some(v) => v,
+                None => String::new(),
+            };
+            let step_type = format!("{:?}", step.step_type);
 
-            if let Some(parent) = &step.parent {
-                line += format!(" Parent step: {},", parent).as_str();
-            }
-
-            if let Some(v) = step.user {
-                line += " User: ";
-                line += &v[..];
-                line += ",";
-            }
-
+            let mut cmd = String::new();
             if let Some(cmd_parm) = &step.action {
-                if let Some(cmd) = &cmd_parm.cmd {
-                    line += format!(" Command: {}", cmd).as_str();
+                if let Some(cmd_base) = &cmd_parm.cmd {
+                    cmd += &cmd_base[..];
                 }
                 for arg in &cmd_parm.args {
-                    line += " ";
-                    line += &arg[..];
+                    cmd += " ";
+                    cmd += &arg[..];
                 }
             }
 
-            response += &line[..];
-            response += "\n";
+            response += format!("{:8} | {:8} | {:9} | {:8} | {:40} | {}\n", step.step_name, step_type, user, parent, step.description, cmd).as_str();
         }
 
         return Ok(response);

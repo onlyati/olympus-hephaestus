@@ -1,5 +1,6 @@
 use std::fmt;
 use std::process::Command;
+use std::path::Path;
 
 pub struct Plan {
     pub id: String,
@@ -108,6 +109,15 @@ impl Step {
                     cmd.arg(arg);
                 }
 
+                if let Some(cwd) = &act.cwd {
+                    let path = Path::new(cwd);
+                    if !path.exists() {
+                        self.status = StepStatus::Failed;
+                        return Some(format!("Work direcotry does not exist: {}\n", path.display()));
+                    }
+                    cmd.current_dir(path);
+                }
+
                 match cmd.output() {
                     Ok(o) => {
                         if o.status.success() {
@@ -164,6 +174,7 @@ impl fmt::Debug for Step {
 pub struct Action {
     pub cmd: Option<String>,
     pub args: Vec<String>,
+    pub cwd: Option<String>,
 }
 
 impl fmt::Debug for Action {
@@ -171,15 +182,17 @@ impl fmt::Debug for Action {
         f.debug_struct("Action")
          .field("cmd", &self.cmd)
          .field("args", &self.args)
+         .field("cwd", &self.cwd)
          .finish()
     }
 }
 
 impl Action {
-    pub fn new(cmd: String) -> Action {
+    pub fn new(cmd: String, cwd: Option<String>) -> Action {
         return Action {
             cmd: Some(cmd),
             args: Vec::new(),
+            cwd: cwd,
         }
     }
 

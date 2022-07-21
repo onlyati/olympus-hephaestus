@@ -189,6 +189,9 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
     /* Start to read every single line and process them                                          */
     /*-------------------------------------------------------------------------------------------*/
     for line in BufReader::new(file).lines() {
+        let current_dir = std::env::current_dir().unwrap();
+        let mut cwd = Some(format!("{}", current_dir.display()));
+        
         if let Ok(line_content) = line {
             // If file is empty then nothing to do
             if line_content.is_empty() {
@@ -286,9 +289,17 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
                         if word.contains("user=\"") {
                             let parms: Vec<&str> = word.split("\"").collect();
                             if parms.len() < 2 {
-                                return Err(format!("Name is not correct, it must be a key-value pair: {:?}", parms));
+                                return Err(format!("User is not correct, it must be a key-value pair: {:?}", parms));
                             }
                             step.user = Some(String::from(parms[1]));
+                        }
+
+                        if word.contains("cwd=\"") {
+                            let parms: Vec<&str> = word.split("\"").collect();
+                            if parms.len() < 2 {
+                                return Err(format!("Work directory is not correct, it must be a key-value pair: {:?}", parms));
+                            }
+                            cwd = Some(String::from(parms[1]));
                         }
 
                         // Parse the name of the step
@@ -304,7 +315,7 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
                         if word.contains("parent=\"") {
                             let parms: Vec<&str> = word.split("\"").collect();
                             if parms.len() < 2 {
-                                return Err(format!("Description is not correct, it must be a key-value pair: {:?}\n", parms));
+                                return Err(format!("Parent is not correct, it must be a key-value pair: {:?}\n", parms));
                             }
                             
                             for s in steps.iter() {
@@ -366,7 +377,7 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
 
                         if record_cmd {
                             match &mut step.action {
-                                None => step.action = Some(Action::new(String::from(word))),
+                                None => step.action = Some(Action::new(String::from(word), cwd.clone())),
                                 Some(v) => v.add_arg(String::from(word)),
                             }
                         }

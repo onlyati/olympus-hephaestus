@@ -189,6 +189,8 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
     /* Start to read every single line and process them                                          */
     /*-------------------------------------------------------------------------------------------*/
     for line in BufReader::new(file).lines() {
+        let mut cwd = None;
+
         if let Ok(line_content) = line {
             // If file is empty then nothing to do
             if line_content.is_empty() {
@@ -286,9 +288,17 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
                         if word.contains("user=\"") {
                             let parms: Vec<&str> = word.split("\"").collect();
                             if parms.len() < 2 {
-                                return Err(format!("Name is not correct, it must be a key-value pair: {:?}", parms));
+                                return Err(format!("User is not correct, it must be a key-value pair: {:?}", parms));
                             }
                             step.user = Some(String::from(parms[1]));
+                        }
+
+                        if word.contains("cwd=\"") {
+                            let parms: Vec<&str> = word.split("\"").collect();
+                            if parms.len() < 2 {
+                                return Err(format!("Work directory is not correct, it must be a key-value pair: {:?}", parms));
+                            }
+                            cwd = Some(String::from(parms[1]));
                         }
 
                         // Parse the name of the step
@@ -304,7 +314,7 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
                         if word.contains("parent=\"") {
                             let parms: Vec<&str> = word.split("\"").collect();
                             if parms.len() < 2 {
-                                return Err(format!("Description is not correct, it must be a key-value pair: {:?}\n", parms));
+                                return Err(format!("Parent is not correct, it must be a key-value pair: {:?}\n", parms));
                             }
                             
                             for s in steps.iter() {
@@ -366,7 +376,7 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
 
                         if record_cmd {
                             match &mut step.action {
-                                None => step.action = Some(Action::new(String::from(word))),
+                                None => step.action = Some(Action::new(String::from(word), cwd.clone())),
                                 Some(v) => v.add_arg(String::from(word)),
                             }
                         }
@@ -474,7 +484,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Read plan files and send summary info back                                                */
+    /* Read plan steps and send summary info back                                                */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 2 {
         let path = format!("plans/{}/{}.conf", options[0], options[1]);
@@ -506,7 +516,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Read all plan file and send it back                                                       */
+    /* Read all plan steps and send it back                                                      */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 3 {
         if options[0] != "-e" {
@@ -543,6 +553,11 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
 
             let mut cmd = String::new();
             if let Some(cmd_parm) = &step.action {
+                if let Some(cwd) = &cmd_parm.cwd {
+                    cmd += "cd ";
+                    cmd += &cwd[..];
+                    cmd += " && ";
+                }
                 if let Some(cmd_base) = &cmd_parm.cmd {
                     cmd += &cmd_base[..];
                 }

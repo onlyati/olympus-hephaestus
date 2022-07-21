@@ -189,9 +189,8 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
     /* Start to read every single line and process them                                          */
     /*-------------------------------------------------------------------------------------------*/
     for line in BufReader::new(file).lines() {
-        let current_dir = std::env::current_dir().unwrap();
-        let mut cwd = Some(format!("{}", current_dir.display()));
-        
+        let mut cwd = None;
+
         if let Ok(line_content) = line {
             // If file is empty then nothing to do
             if line_content.is_empty() {
@@ -485,7 +484,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Read plan files and send summary info back                                                */
+    /* Read plan steps and send summary info back                                                */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 2 {
         let path = format!("plans/{}/{}.conf", options[0], options[1]);
@@ -517,7 +516,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Read all plan file and send it back                                                       */
+    /* Read all plan steps and send it back                                                      */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 3 {
         if options[0] != "-e" {
@@ -554,6 +553,11 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
 
             let mut cmd = String::new();
             if let Some(cmd_parm) = &step.action {
+                if let Some(cwd) = &cmd_parm.cwd {
+                    cmd += "cd ";
+                    cmd += &cwd[..];
+                    cmd += " && ";
+                }
                 if let Some(cmd_base) = &cmd_parm.cmd {
                     cmd += &cmd_base[..];
                 }

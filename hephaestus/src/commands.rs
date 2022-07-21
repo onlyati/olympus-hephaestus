@@ -83,6 +83,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
 
     let _ = thread::spawn(move || {
         let mut completion_list: HashMap<&String, Step> = HashMap::new();  // We will save the previous steps for parent checking
+        plan.status = StepStatus::Ok;
 
         /*---------------------------------------------------------------------------------------*/
         /* Run through the step list. Step will be executed if:                                  */
@@ -121,10 +122,14 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
                 completion_list.insert(&step.step_name, step.clone());
             }
 
+            if step.status != StepStatus::Ok && step.status != StepStatus::NotRun {
+                plan.status = step.status.clone();
+            }
+
             write_history(format!("{} => {:?}", step.step_name, step.status), &plan.id, plan_index, &copy_hist);
         }
 
-        write_history(String::from("Plan is ended"), &plan.id, plan_index, &copy_hist);
+        write_history(format!("Plan is ended, overall status: {:?}", plan.status), &plan.id, plan_index, &copy_hist);
     });
 
     /*-------------------------------------------------------------------------------------------*/

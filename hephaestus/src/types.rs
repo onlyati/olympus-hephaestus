@@ -86,28 +86,28 @@ impl Step {
 
         match &self.action {
             Some(act) => {
-                let cmd = match &act.cmd {
-                    Some(v) => v.clone(),
-                    None => {
-                        self.status = StepStatus::Nok;
-                        return None;
-                    } 
-                };
+                if act.cmd.len() == 0 {
+                    self.status = StepStatus::Failed;
+                    return None;
+                }
 
                 let mut cmd: Command = match &self.user {
                     Some(u) => {
                         let mut b_cmd = Command::new("/usr/bin/sudo");
                         b_cmd.arg("-u");
                         b_cmd.arg(u);
-                        b_cmd.arg(cmd);
+                        b_cmd.arg("bash");
+                        b_cmd.arg("-c");
+                        b_cmd.arg(act.cmd.join(" "));
                         b_cmd
                     },
-                    None => Command::new(cmd)
+                    None => {
+                        let mut b_cmd = Command::new("bash");
+                        b_cmd.arg("-c");
+                        b_cmd.arg(act.cmd.join(" "));
+                        b_cmd
+                    },
                 };
-
-                for arg in &act.args {
-                    cmd.arg(arg);
-                }
 
                 if let Some(cwd) = &act.cwd {
                     let path = Path::new(cwd);
@@ -172,8 +172,7 @@ impl fmt::Debug for Step {
 /// - args => Arguments of program
 #[derive(Clone)]
 pub struct Action {
-    pub cmd: Option<String>,
-    pub args: Vec<String>,
+    pub cmd: Vec<String>,
     pub cwd: Option<String>,
 }
 
@@ -181,7 +180,6 @@ impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Action")
          .field("cmd", &self.cmd)
-         .field("args", &self.args)
          .field("cwd", &self.cwd)
          .finish()
     }
@@ -189,15 +187,11 @@ impl fmt::Debug for Action {
 
 impl Action {
     pub fn new(cmd: String, cwd: Option<String>) -> Action {
+        let base = vec![String::from(cmd)];
         return Action {
-            cmd: Some(cmd),
-            args: Vec::new(),
+            cmd: base,
             cwd: cwd,
         }
-    }
-
-    pub fn add_arg(&mut self, arg: String) {
-        self.args.push(arg);
     }
 }
 

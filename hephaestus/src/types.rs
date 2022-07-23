@@ -88,7 +88,7 @@ impl Step {
             Some(act) => {
                 if act.cmd.len() == 0 {
                     self.status = StepStatus::Failed;
-                    return None;
+                    return Some(String::from("Command is not specified"));
                 }
 
                 let mut cmd: Command = match &self.user {

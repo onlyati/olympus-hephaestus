@@ -377,7 +377,7 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
                         if record_cmd {
                             match &mut step.action {
                                 None => step.action = Some(Action::new(String::from(word), cwd.clone())),
-                                Some(v) => v.add_arg(String::from(word)),
+                                Some(v) => v.cmd.push(String::from(word)),
                             }
                         }
                     }
@@ -558,13 +558,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
                     cmd += &cwd[..];
                     cmd += " && ";
                 }
-                if let Some(cmd_base) = &cmd_parm.cmd {
-                    cmd += &cmd_base[..];
-                }
-                for arg in &cmd_parm.args {
-                    cmd += " ";
-                    cmd += &arg[..];
-                }
+                cmd += cmd_parm.cmd.join(" ").as_str();
             }
 
             response += format!("{:8} | {:8} | {:9} | {:8} | {:40} | {}\n", step.step_name, step_type, user, parent, step.description, cmd).as_str();

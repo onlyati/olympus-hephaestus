@@ -13,6 +13,16 @@ fn main() {
 
     args.remove(0);
 
+    if args[0] == "-x" {
+        // Execute dynmically
+        if args.len() < 2 {
+            println!("No script is supplied!\n");
+            exit(1);
+        }
+        println!("{:?}\n", args);
+        return;
+    }
+
     let socket = if args[0] == "--dev" {
         args.remove(0);
         Path::new("/tmp/hephaestus-dev.sock")

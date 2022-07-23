@@ -271,6 +271,9 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
                     let mut step: Step = Step::new_empty();
                     let mut record_desc: bool = false;               // Description can be more words, must use for tracking its collection
                     let mut record_cmd: bool = false;                // Command can be more words, must use for tracking its collection
+                    let mut record_env: bool = false;
+                    let mut key_env = String::new();
+                    let mut value_env = String::new();
 
                     for word in step_raw.split_whitespace() {
                         // It is a regular step
@@ -327,6 +330,46 @@ fn collect_steps(path: &Path) -> Result<Plan, String> {
                             if let None = step.parent {
                                 return Err(format!("Reference as parent for {} but does not exist yet!\n", parms[1]));
                             }
+                        }
+
+                        // Start to collect environment variables
+                        if word.contains("setenv=\"") {
+                            let parms: Vec<&str> = word.split("\"").collect();
+                            if parms.len() > 1 {
+                                   key_env = String::from(parms[1]);
+                            }
+                            record_env = true;
+                            continue;
+                        }
+
+                        if word.contains("\"") & record_env {
+                            let mut pos: usize = 0;
+                            for i in word.chars() {
+                                if i == '\"' {
+                                    break;
+                                }
+                                pos += 1;
+                            }
+                            value_env += &word[0..pos];
+
+                            if value_env.is_empty() || key_env.is_empty() {
+                                return Err(String::from("Key and/or value is missing in setenv option"));
+                            }
+
+                            step.envvars.insert(key_env.clone(), value_env.clone());
+                            value_env = String::new();
+                            key_env = String::new();
+                            record_env = false;
+                        }
+
+                        if record_env {
+                            if key_env.is_empty() {
+                                key_env = String::from(word);
+                            } else {
+                                value_env += word;
+                                value_env += " ";
+                            }
+                            continue;
                         }
 
                         // Start to collect description

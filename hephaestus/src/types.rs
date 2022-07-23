@@ -1,6 +1,7 @@
 use std::fmt;
 use std::process::Command;
 use std::path::Path;
+use std::collections::HashMap;
 
 pub struct Plan {
     pub id: String,
@@ -28,6 +29,7 @@ pub struct Step {
     pub action: Option<Action>,
     pub parent: Option<String>,
     pub status: StepStatus,
+    pub envvars: HashMap<String, String>
 }
 
 impl Step {
@@ -43,6 +45,7 @@ impl Step {
             action: None,
             parent: None,
             status: StepStatus::NotRun,
+            envvars: HashMap::new(),
         };
     }
 
@@ -108,6 +111,12 @@ impl Step {
                         b_cmd
                     },
                 };
+
+                if self.envvars.len() > 0 {
+                    for (key, value) in &self.envvars {
+                        cmd.env(key, value);
+                    }
+                }
 
                 if let Some(cwd) = &act.cwd {
                     let path = Path::new(cwd);

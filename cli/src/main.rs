@@ -13,6 +13,11 @@ fn main() {
 
     args.remove(0);
 
+    if args[0] == "--version" {
+        println!("v.0.1.1");
+        exit(0);
+    }
+
     // Execute script dynmically
     if args[0] == "-x" {
         if args.len() < 2 {

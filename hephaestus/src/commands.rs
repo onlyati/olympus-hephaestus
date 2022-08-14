@@ -31,7 +31,6 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
     response = response + "Retrieve list about plan sets:                 list \n";
     response = response + "Retrieve list about plan within a set:         list <plan-set>\n";
     response = response + "Retrive information about plan:                list <plan-set> <plan>\n";
-    response = response + "Retrive details about plan:                    list -e <plan-set> <plan>\n";
     response = response + "List plan IDs:                                 plans\n";
     response = response + "Status of plan in historical data:             status <plan-id>\n";
     response = response + "Request to execute a plan:                     exec <plan-set> <plan>\n";
@@ -527,7 +526,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
     }
 
     /*-------------------------------------------------------------------------------------------*/
-    /* Read plan steps and send summary info back                                                */
+    /* Read all plan steps and send it back                                                      */
     /*-------------------------------------------------------------------------------------------*/
     if options.len() == 2 {
         let path = format!("plans/{}/{}.conf", options[0], options[1]);
@@ -539,48 +538,43 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
             Err(e) => return Err(format!("{}/{}: {}", std::env::current_dir().unwrap().display(), path.display(), e)),
         };
 
-        response += "ID: ";
-        response += &plan.id[..];
-        response += "\n";
+        let mut step_w: usize = 8;
+        let mut type_w: usize = 8;
+        let mut user_w: usize = 9;
+        let mut parent_w: usize = 8;
+        let mut desc_w: usize = 12;
 
-        response += "Step     | Type     | Parent   | Description\n";
-        response += "---------+----------+----------+-------------\n";
+        for step in &plan.steps {
+            if let Some(p) = &step.parent {
+                if p.len() > parent_w {
+                    parent_w = p.len();
+                }
+            }
 
-        for step in plan.steps {
-            let parent = match step.parent {
-                Some(v) => v,
-                None => String::new(),
-            };
-            let step_type = format!("{:?}", step.step_type);
-            response += format!("{:8} | {:8} | {:8} | {}\n", step.step_name, step_type, parent, step.description).as_str();
+            if let Some(u) = &step.user {
+                if u.len() > user_w {
+                    user_w = u.len();
+                }
+            }
+
+            let temp_type = format!("{:?}", step.step_type);
+            if temp_type.len() > type_w {
+                type_w = temp_type.len();
+            }
+
+            if step.step_name.len() > step_w {
+                step_w = step.step_name.len();
+            }
+
+            if step.description.len() > desc_w {
+                desc_w = step.description.len();
+            }
         }
-
-        return Ok(response);
-    }
-
-    /*-------------------------------------------------------------------------------------------*/
-    /* Read all plan steps and send it back                                                      */
-    /*-------------------------------------------------------------------------------------------*/
-    if options.len() == 3 {
-        if options[0] != "-e" {
-            return Err(format!("For expanded details type -e as list parameter instead of {}", options[0]));
-        }
-
-        let path = format!("plans/{}/{}.conf", options[1], options[2]);
-        let path = Path::new(&path);
-
-        // Let's try to read the specified file
-        let plan = match collect_steps(path) {
-            Ok(v) => v,
-            Err(e) => return Err(format!("{}/{}: {}", std::env::current_dir().unwrap().display(), path.display(), e)),
-        };
 
         response += "Plan ID: ";
         response += &plan.id[..];
         response += "\n";
-
-        response += "Step     | Type     | User      | Parent   | Description                              | Command\n";
-        response += "---------+----------+-----------+----------+------------------------------------------+---------\n";
+        response += format!("{:step_w$} | {:type_w$} | {:user_w$} | {:parent_w$} | {:desc_w$} | {}\n", ">Step", ">Type", ">User", ">Parent", ">Description", ">Command").as_str();
 
         // If file read was success, then print it into a printable format and send back
         for step in plan.steps {
@@ -604,7 +598,7 @@ pub fn list(options: Vec<String>) -> Result<String, String> {
                 cmd += cmd_parm.cmd.join(" ").as_str();
             }
 
-            response += format!("{:8} | {:8} | {:9} | {:8} | {:40} | {}\n", step.step_name, step_type, user, parent, step.description, cmd).as_str();
+            response += format!("{:step_w$} | {:type_w$} | {:user_w$} | {:parent_w$} | {:desc_w$} | {}\n", step.step_name, step_type, user, parent, step.description, cmd).as_str();
         }
 
         return Ok(response);

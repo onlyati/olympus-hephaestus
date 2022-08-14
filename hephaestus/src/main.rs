@@ -15,6 +15,8 @@ mod commands;
 mod types;
 
 fn main() {
+    println!("Version 0.1.1 is starting...");
+
     /*-------------------------------------------------------------------------------------------*/
     /* Read argumen then check that work directory exist. If it exist set it up work directory . */
     /*-------------------------------------------------------------------------------------------*/
@@ -41,6 +43,8 @@ fn main() {
         exit(1);
     }
 
+    println!("Work directory has been found");
+
     /*-------------------------------------------------------------------------------------------*/
     /* Check work directory structure and fix if possible                                        */
     /* <work_dir>                                                                                */
@@ -66,6 +70,8 @@ fn main() {
             exit(1);
         }
     }
+
+    println!("Directory check is OK");
 
     /*-------------------------------------------------------------------------------------------*/
     /* Prepare UNIX socket for listening                                                         */
@@ -110,6 +116,8 @@ fn main() {
         exit(1);
     }
 
+    println!("Socker '{}' is prepared", socket_path.display());
+
     /*-------------------------------------------------------------------------------------------*/
     /* Create a list for history and number to track plan IDs. They must be mutexes as they      */
     /* will be handled by threads.                                                               */
@@ -121,6 +129,7 @@ fn main() {
     /* It seems everything is okay so far, let's start the listening on socket and see           */
     /* what happens                                                                              */
     /*-------------------------------------------------------------------------------------------*/
+    println!("Listeing on '{}' socket", socket_path.display());
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {

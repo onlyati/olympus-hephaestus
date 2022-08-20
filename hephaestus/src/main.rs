@@ -20,10 +20,16 @@ static VERSION: &str = "v.0.1.2";
 fn main() {
     println!("Version {} is starting...", VERSION);
 
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Config file must be specified!");
+        exit(1);
+    }
+
     /*-------------------------------------------------------------------------------------------*/
     /* Read config file                                                                          */
     /*-------------------------------------------------------------------------------------------*/
-    let config = match onlyati_config::read_config("main.conf") {
+    let config = match onlyati_config::read_config(&args[1]) {
         Ok(conf) => conf,
         Err(e) => {
             println!("Failed to parse 'main.conf': {}", e);
@@ -31,28 +37,20 @@ fn main() {
         }
     };
 
+    println!("Configuration:");
+    for (setting, value) in &config {
+        println!("{} -> {}", setting, value);
+    }
+
     if let Some(addr) = config.get("hermes_addr") {
         let mut hermes_addr = HERMES_ADDR.lock().unwrap();
         *hermes_addr = Some(addr.clone());
-        println!("Configuration:");
-        println!("- hermes_addr -> {}", addr);
     }
 
     /*-------------------------------------------------------------------------------------------*/
     /* Read argument then check that work directory exist. If it exist set it up work directory  */
     /*-------------------------------------------------------------------------------------------*/
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        println!("Working directory must be specified!");
-        exit(1);
-    }
-
-    let mut dev_mode: bool = false;
-    if args[1] == "--dev" {
-        dev_mode = true;
-    }
-
-    let work_dir = Path::new(&args[args.len() - 1]);
+    let work_dir = Path::new(config.get("work_dir").expect("work_dir is not specified in config"));
 
     if !work_dir.exists() {
         println!("Working directory does not exist: {}", work_dir.display());
@@ -97,11 +95,7 @@ fn main() {
     /*-------------------------------------------------------------------------------------------*/
     /* Prepare UNIX socket for listening                                                         */
     /*-------------------------------------------------------------------------------------------*/
-    let socket_path = if dev_mode { 
-        Path::new("/tmp/hephaestus-dev.sock") 
-    } else { 
-        Path::new("/tmp/hephaestus.sock") 
-    };
+    let socket_path = Path::new(config.get("socket_name").expect("socket_name is not specified in config"));
 
     if socket_path.exists() {
         if let Err(e) = fs::remove_file(socket_path) {

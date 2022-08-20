@@ -101,15 +101,12 @@ pub fn handle_client(mut stream: UnixStream, history: Arc<Mutex<HashMap<u64, Vec
         index += 1;
     }
 
-    match command_coordinator(verb, options, history) {
-        Ok(s) => {
-            let _ = stream.write_all(s.as_bytes());
-        },
-        Err(e) => {
-            let error_msg = format!("ERROR: {}", e);
-            let _ = stream.write_all(error_msg.as_bytes());
-        }
-    }
+    let response = match command_coordinator(verb, options, history) {
+        Ok(s) => format!(">Done\n{}", s),
+        Err(e) => format!(">Error\n{}", e),
+    };
+
+    let _ = stream.write_all(response.as_bytes());
 }
 
 /// Command coordinator

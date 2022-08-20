@@ -3,9 +3,10 @@ use std::fs::File;
 use std::path::Path;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Write;
+use std::io::{Write, Read};
 use std::thread;
 use std::mem::size_of;
+use std::net::TcpStream;
 
 use crate::types::Plan;
 use crate::types::Step;
@@ -20,6 +21,8 @@ use std::sync::Arc;
 use chrono::Datelike;
 use chrono::Local;
 use chrono::Timelike;
+
+use crate::HERMES_ADDR;
 
 /// Help command
 /// 
@@ -62,6 +65,7 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         }
     }
 
+    let plan_set = options[0].clone();
     let path = format!("plans/{}/{}.conf", options[0], options[1]);
     let path = Path::new(&path);
 
@@ -129,6 +133,15 @@ pub fn exec(options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>
         }
 
         write_history(format!("Plan is ended, overall status: {:?}", plan.status), &plan.id, plan_index, &copy_hist);
+        {
+            let addr = HERMES_ADDR.lock().unwrap();
+            if let Some(addr) = &*addr {
+                match hermes_cmd(addr, format!("set data('batch_{}_{}', '{:?}') in Hephaestus;", plan_set, plan.id, plan.status)) {
+                    Ok(_) => println!("Plan, {}, result has been passed to Hermes", plan.id),
+                    Err(e) => println!("ERROR: Failed to reach Hermes: {}", e),
+                }
+            }
+        }
     });
 
     /*-------------------------------------------------------------------------------------------*/
@@ -690,4 +703,26 @@ fn write_history(text: String, plan_name: &String, index: u64, history: &Arc<Mut
             history.insert(index, msg);
         },
     };
+}
+
+fn hermes_cmd(address: &String, cmd: String) -> Result<String, String> {
+    let mut stream = match TcpStream::connect(address) {
+        Ok(stream) => stream,
+        Err(e) => return Err(format!("ERROR: {}", e)),
+    };
+
+    let cmd = format!("{} {}", cmd.len(), cmd);
+
+    stream.write(cmd.as_bytes()).unwrap();
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).unwrap();
+
+    let lines: Vec<&str> = response.lines().collect();
+
+    if lines[0] == ">Done" {
+        return Ok(lines[1..].join("\n"));
+    }
+
+    return Err(lines[1..].join("\n"));
 }

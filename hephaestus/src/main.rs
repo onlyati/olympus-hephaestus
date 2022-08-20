@@ -15,9 +15,28 @@ mod commands;
 mod types;
 
 static HERMES_ADDR: Mutex<Option<String>> = Mutex::new(None);
+static VERSION: &str = "v.0.1.2";
 
 fn main() {
-    println!("Version 0.1.1 is starting...");
+    println!("Version {} is starting...", VERSION);
+
+    /*-------------------------------------------------------------------------------------------*/
+    /* Read config file                                                                          */
+    /*-------------------------------------------------------------------------------------------*/
+    let config = match onlyati_config::read_config("main.conf") {
+        Ok(conf) => conf,
+        Err(e) => {
+            println!("Failed to parse 'main.conf': {}", e);
+            exit(1);
+        }
+    };
+
+    if let Some(addr) = config.get("hermes_addr") {
+        let mut hermes_addr = HERMES_ADDR.lock().unwrap();
+        *hermes_addr = Some(addr.clone());
+        println!("Configuration:");
+        println!("- hermes_addr -> {}", addr);
+    }
 
     /*-------------------------------------------------------------------------------------------*/
     /* Read argument then check that work directory exist. If it exist set it up work directory  */
@@ -46,24 +65,6 @@ fn main() {
     }
 
     println!("Work directory has been found");
-
-    /*-------------------------------------------------------------------------------------------*/
-    /* Read config file                                                                          */
-    /*-------------------------------------------------------------------------------------------*/
-    let config = match onlyati_config::read_config("main.conf") {
-        Ok(conf) => conf,
-        Err(e) => {
-            println!("Failed to parse 'main.conf': {}", e);
-            exit(1);
-        }
-    };
-
-    if let Some(addr) = config.get("hermes_addr") {
-        let mut hermes_addr = HERMES_ADDR.lock().unwrap();
-        *hermes_addr = Some(addr.clone());
-        println!("Configuration:");
-        println!("- hermes_addr -> {}", addr);
-    }
 
     /*-------------------------------------------------------------------------------------------*/
     /* Check work directory structure and fix if possible                                        */

@@ -121,35 +121,32 @@ pub fn handle_client(mut stream: UnixStream, history: Arc<Mutex<HashMap<u64, Vec
 /// If the called function return with error, it will return with the same `Err(String)`.
 /// If command verb would not exist, it returns with `Error(String)`.
 fn command_coordinator(verb: String, options: Vec<String>, history: Arc<Mutex<HashMap<u64, Vec<String>>>>) -> Result<String, String> {
-    let list_verb = String::from("list");
-    let exec_verb = String::from("exec");
-    let stat_verb = String::from("status");
-    let help_verb = String::from("help");
-    let flow_verb = String::from("plans");
-    let dump_verb = String::from("dump");
-
-    if verb == list_verb {
+    if verb == "list" {
         return commands::list(options);
     }
 
-    if verb == exec_verb {
+    if verb == "exec" {
         return commands::exec(options, history);
     }
 
-    if verb == stat_verb {
+    if verb == "status" {
         return commands::status(options, history);
     }
 
-    if verb == help_verb {
+    if verb == "help" {
         return commands::help(options);
     }
 
-    if verb == flow_verb {
+    if verb == "plans" {
         return commands::list_ids(options, history);
     }
 
-    if verb == dump_verb {
+    if verb == "dump" {
         return commands::dump(options, history);
+    }
+
+    if verb == "version" {
+        return commands::getver(options);
     }
 
     return Err(String::from("Invalid command verb"));

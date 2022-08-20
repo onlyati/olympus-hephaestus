@@ -14,7 +14,7 @@ fn main() {
     args.remove(0);
 
     if args[0] == "--version" {
-        println!("v.0.1.1");
+        println!("v.0.1.2");
         exit(0);
     }
 

@@ -42,6 +42,10 @@ pub fn help(_options: Vec<String>) -> Result<String, String> {
     return Ok(response);
 }
 
+pub fn getver(_option: Vec<String>) -> Result<String, String> {
+    return Ok(format!("{}", crate::VERSION));
+}
+
 /// Execute specifiec step
 /// 
 /// This function read the file, validate it then execute on same thread as it is

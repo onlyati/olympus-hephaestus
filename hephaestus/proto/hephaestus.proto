@@ -8,7 +8,6 @@ service Hephaestus {
     rpc ListPlanSets (Empty) returns (List);
     rpc ListPlans (PlanSetArg) returns (List);
     rpc ListPlan (PlanArg) returns (PlanDetails);
-    rpc ShowHist (Empty) returns (List);
     rpc ShowStatus (PlanId) returns (PlanHistory);
     rpc Execute (PlanArg) returns (Empty);
     rpc DumpHist (PlanId) returns (Empty);

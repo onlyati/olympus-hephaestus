@@ -74,14 +74,18 @@ impl Step {
     }
 
     /// Execute the command from the step and change its status accordingly
-    pub fn execute(&mut self) -> Vec<String> {
-        let mut log: Vec<String> = Vec::new();
+    pub fn execute(&mut self) -> Vec<StepOutput> {
+        let mut log: Vec<StepOutput>;
 
         match &self.action {
             Some(act) => {
                 if act.cmd.len() == 0 {
                     self.status = StepStatus::Failed;
-                    return vec!(String::from("Command is not specified"));
+                    return vec!(StepOutput {
+                        time: time_is_now(),
+                        text: "Command is not specified".to_string(),
+                        out_type: StepOutputType::Error,
+                    });
                 }
 
                 let mut cmd: Command = match &self.user {
@@ -112,7 +116,11 @@ impl Step {
                     let path = Path::new(cwd);
                     if !path.exists() {
                         self.status = StepStatus::Failed;
-                        return vec!(format!("Work directory does not exist: {}\n", path.display()));
+                        return vec!(StepOutput {
+                            time: time_is_now(),
+                            text: format!("Work directory does not exist: {}\n", path.display()),
+                            out_type: StepOutputType::Error,
+                        });
                     }
                     cmd.current_dir(path);
                 }
@@ -139,9 +147,38 @@ impl Step {
 
                 stdout.append(&mut stderr);
                 stdout.sort_by(|a, b| a.time.cmp(&b.time));
+                log = stdout;
 
-                for msg in stdout {
-                    log.push(format!("{} {} {}", msg.time, msg.out_type, msg.text));
+
+                let status = child.wait();
+                match status {
+                    Ok(code) => {
+                        if code.success() {
+                            self.status = StepStatus::Ok;
+                            log.push(StepOutput {
+                                time: time_is_now(),
+                                text: String::from("Step is ended with exit code 0"),
+                                out_type: StepOutputType::Info,
+                            });
+                        }
+                        else {
+                            self.status = StepStatus::Nok;
+                            log.push(StepOutput {
+                                time: time_is_now(),
+                                text: format!("Step is ended with exit code {:?}", code.code()),
+                                out_type: StepOutputType::Error,
+                            });
+                        }
+                        
+                    },
+                    Err(e) => { 
+                        self.status = StepStatus::Failed;
+                        log.push(StepOutput {
+                            time: time_is_now(),
+                            text: format!("Step is failed: {:?}", e),
+                            out_type: StepOutputType::Error,
+                        });
+                    },
                 }
             }
             None => {
@@ -154,10 +191,10 @@ impl Step {
     }
 }
 
-struct StepOutput {
-    time: String,
-    text: String,
-    out_type: StepOutputType,
+pub struct StepOutput {
+    pub time: String,
+    pub text: String,
+    pub out_type: StepOutputType,
 }
 
 // Internal function, it is used to read the stdout and stderr of agent
@@ -170,10 +207,8 @@ fn read_buffer<T: Read>(reader: &mut BufReader<T>, out_type: StepOutputType) -> 
             break;
         }
 
-        let now = chrono::Local::now();
-        let now = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
         messages.push(StepOutput { 
-            time: now, 
+            time: time_is_now(), 
             text: line, 
             out_type: out_type 
         });
@@ -182,4 +217,9 @@ fn read_buffer<T: Read>(reader: &mut BufReader<T>, out_type: StepOutputType) -> 
     }
 
     return messages;
+}
+
+fn time_is_now() -> String {
+    let now = chrono::Local::now();
+    return format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
 }

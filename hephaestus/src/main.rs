@@ -9,6 +9,7 @@ mod services;
 mod structs;
 
 static GLOBAL_CONFIG: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
+static HISTORY: RwLock<Option<HashMap<u32, Vec<String>>>> = RwLock::new(None);
 static VERSION: &str = "v.0.2.0";
 
 fn main() {
@@ -70,6 +71,14 @@ fn main() {
     }
 
     println!("Directory check is OK");
+
+    /*-------------------------------------------------------------------------------------------*/
+    /* Initailize history                                                                        */
+    /*-------------------------------------------------------------------------------------------*/
+    {
+        let mut history = HISTORY.write().unwrap();
+        *history = Some(HashMap::new());
+    }
 
     /*-------------------------------------------------------------------------------------------*/
     /* Allocate a tokio runtime, then start gRPC server                                          */

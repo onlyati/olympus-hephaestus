@@ -6,7 +6,7 @@ use std::str::FromStr;
 use tonic::{transport::Server, Request, Response, Status};
 
 use hephaestus::hephaestus_server::{Hephaestus, HephaestusServer};
-use hephaestus::{Empty, List, PlanSetArg, PlanArg, PlanId, Dictionary, PlanStep, PlanDetails, PlanHistory};
+use hephaestus::{Empty, List, PlanSetArg, PlanArg, PlanId, Dictionary, PlanStep, PlanDetails, PlanHistory, PlanList};
 
 use chrono::Datelike;
 use chrono::Timelike;
@@ -99,8 +99,13 @@ impl Hephaestus for HephaestusGrpc {
                                 None => return Err(Status::internal(String::from("Could not parse directory"))),
                             };
 
-                            let rule_name: String = full_path.ends_with(".conf").to_string();
-                            rules.push(rule_name);                            
+                            if full_path.ends_with(".conf") {
+                                let rule_name = full_path.split(".")
+                                    .collect::<Vec<&str>>();
+
+                                let rule_name = rule_name[0..rule_name.len() - 1].join(".");
+                                rules.push(rule_name);
+                            }
                         }
                     }
                 }
@@ -175,6 +180,30 @@ impl Hephaestus for HephaestusGrpc {
         return Ok(Response::new(plan));
     }
 
+    async fn show_plans(&self, _request: Request<Empty>) -> Result<Response<PlanList>, Status> {
+        let ids: Vec<PlanId> = {
+            let history = HISTORY.read().unwrap();
+            let history = match &*history {
+                Some(h) => h,
+                None => return Err(Status::internal(String::from("History is not initialized yet"))),
+            };
+
+            let mut collected: Vec<PlanId> = Vec::new();
+
+            for (key, _) in history.iter() {
+                collected.push(PlanId { id: *key });
+            }
+
+            collected
+        };
+
+        let list = PlanList {
+            ids: ids,
+        };
+
+        return Ok(Response::new(list));
+    }
+
     /// This gRPC endpoint is responsible to display a scheduled plan status and its log
     async fn show_status(&self, request: Request<PlanId>) -> Result<Response<PlanHistory>, Status> {
         let arg = request.into_inner();
@@ -203,7 +232,7 @@ impl Hephaestus for HephaestusGrpc {
     }
 
     /// This gRPC endpoint is responsible to schedule a new task and start it on async way
-    async fn execute(&self, request: Request<PlanArg>) -> Result<Response<Empty>, Status> {
+    async fn execute(&self, request: Request<PlanArg>) -> Result<Response<PlanId>, Status> {
         let arg = request.into_inner();
         let set = arg.set;
         let plan_name = arg.plan;
@@ -229,18 +258,17 @@ impl Hephaestus for HephaestusGrpc {
                 None => return Err(Status::internal(String::from("History is not initialized yet"))),
             };
 
-            let max_key = history.iter()
-                .max_by(|a ,b| a.0.cmp(&b.0))
-                .map(|(k, _v)| k);
+            let mut max_key: u32 = 0;
 
-            let next_id: u32 = match max_key {
-                Some(key) => {
-                    let next_id = *key + 1;
-                    history.insert(next_id, vec![msg_with_time_stamp(format!("{}/{} => Plan is initializing", set, plan_name), StepOutputType::Info)]);
-                    next_id
-                },
-                None => 0
-            };
+            for (key, _) in history.iter() {
+                if *key > max_key {
+                    max_key = *key;
+                }
+            }
+
+            let next_id = max_key + 1;
+
+            history.insert(next_id, Vec::new());
 
             let path = format!("{}/{}/{}.conf", rule_dir, set, plan_name);
             let path = Path::new(&path);
@@ -248,14 +276,14 @@ impl Hephaestus for HephaestusGrpc {
             let plan = match super::parser::collect_steps(path) {
                 Ok(plan) => {
                     match history.get_mut(&next_id) {
-                        Some(log) => log.push(msg_with_time_stamp(format!("{}/{} => Plan has initialized", set, plan_name), StepOutputType::Info)),
+                        Some(log) => log.push(msg_with_time_stamp(format!("----> {}/{} => Plan has initialized", set, plan_name), StepOutputType::Info)),
                         None => (),
                     }
                     plan 
                 },
                 Err(e) => { 
                     match history.get_mut(&next_id) {
-                        Some(log) => log.push(msg_with_time_stamp(format!("{}/{} => Failed to parse the plan: {}", set, plan_name, e), StepOutputType::Error)),
+                        Some(log) => log.push(msg_with_time_stamp(format!("----> {}/{} => Failed to parse the plan: {}", set, plan_name, e), StepOutputType::Error)),
                         None => (),
                     }
                     return Err(Status::internal(format!("Failed to parse file: {} {}", path.display(), e)));
@@ -265,6 +293,8 @@ impl Hephaestus for HephaestusGrpc {
             (next_id, plan)
         };
 
+        println!("Scheduling {}({})...", plan_info.1.id, plan_info.0);
+
         // Start batch in the background
         std::thread::spawn(move || {
             let mut completion_list: HashMap<&String, Step> = HashMap::new();
@@ -272,7 +302,7 @@ impl Hephaestus for HephaestusGrpc {
 
             for step in plan_info.1.steps.iter_mut() {
                 write_history(plan_info.0, |log| {
-                    log.push(msg_with_time_stamp(format!("{} => Pending", step.step_name), StepOutputType::Info));
+                    log.push(msg_with_time_stamp(format!("----> {} => Pending", step.step_name), StepOutputType::Info));
                 });
 
                 let mut enable = false;
@@ -297,7 +327,7 @@ impl Hephaestus for HephaestusGrpc {
                         {
                             write_history(plan_info.0, |log| {
                                 let mut msgs: Vec<String> = step_log.iter()
-                                    .map(|x| format!("{} {} {}", x.time, x.text, x.out_type))
+                                    .map(|x| format!("{} {} {}", x.time, x.out_type, x.text))
                                     .collect();
                                 log.append(&mut msgs);
                             });
@@ -311,17 +341,17 @@ impl Hephaestus for HephaestusGrpc {
                 }
 
                 write_history(plan_info.0, |log| {
-                    log.push(msg_with_time_stamp(format!("{} => {:?}", step.step_name, step.status), StepOutputType::Info));
+                    log.push(msg_with_time_stamp(format!("----> {} => {:?}", step.step_name, step.status), StepOutputType::Info));
                 });
             }
 
             write_history(plan_info.0, |log| {
-                log.push(msg_with_time_stamp(format!("Plan is ended, overall status: {:?}", plan_info.1.status), StepOutputType::Info));
+                log.push(msg_with_time_stamp(format!("----> Plan is ended, overall status: {:?}", plan_info.1.status), StepOutputType::Info));
             });
         });
 
         // Batch is running in the backgorund, give anser back
-        return Ok(Response::new(Empty {}));
+        return Ok(Response::new(PlanId { id: plan_info.0}));
     }
 
     async fn dump_hist(&self, request: Request<PlanId>) -> Result<Response<Empty>, Status> {

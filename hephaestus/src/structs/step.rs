@@ -147,6 +147,9 @@ impl Step {
 
                 stdout.append(&mut stderr);
                 stdout.sort_by(|a, b| a.time.cmp(&b.time));
+                for line in &mut stdout {
+                    line.text = line.text.replace("\n", "");
+                }
                 log = stdout;
 
 
@@ -157,7 +160,7 @@ impl Step {
                             self.status = StepStatus::Ok;
                             log.push(StepOutput {
                                 time: time_is_now(),
-                                text: String::from("Step is ended with exit code 0"),
+                                text: String::from("----> Step is ended with exit code 0"),
                                 out_type: StepOutputType::Info,
                             });
                         }
@@ -165,7 +168,7 @@ impl Step {
                             self.status = StepStatus::Nok;
                             log.push(StepOutput {
                                 time: time_is_now(),
-                                text: format!("Step is ended with exit code {:?}", code.code()),
+                                text: format!("----> Step is ended with exit code {:?}", code.code()),
                                 out_type: StepOutputType::Error,
                             });
                         }
@@ -175,7 +178,7 @@ impl Step {
                         self.status = StepStatus::Failed;
                         log.push(StepOutput {
                             time: time_is_now(),
-                            text: format!("Step is failed: {:?}", e),
+                            text: format!("----> Step is failed: {:?}", e),
                             out_type: StepOutputType::Error,
                         });
                     },
@@ -209,7 +212,7 @@ fn read_buffer<T: Read>(reader: &mut BufReader<T>, out_type: StepOutputType) -> 
 
         messages.push(StepOutput { 
             time: time_is_now(), 
-            text: line, 
+            text: line,
             out_type: out_type 
         });
 

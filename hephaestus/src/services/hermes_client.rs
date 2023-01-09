@@ -10,11 +10,7 @@ mod hermes {
     tonic::include_proto!("hermes");
 }
 
-use crate::HERMES_RX;
-
-pub async fn start_hermes_client(config: &HashMap<String, String>) -> Result<(), Box<dyn std::error::Error>> {
-    let mut receiver = HERMES_RX.lock().unwrap();
-    let receiver = receiver.as_mut().unwrap();
+pub async fn start_hermes_client(config: &HashMap<String, String>, receiver: &mut tokio::sync::mpsc::Receiver<(String, String)>) -> Result<(), Box<dyn std::error::Error>> {
 
     let addr = config.get("hermes.grpc.address").unwrap();
     let table = config.get("hermes.table").unwrap();

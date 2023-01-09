@@ -6,14 +6,13 @@ use std::sync::Mutex;
 use std::sync::RwLock;
 use std::collections::HashMap;
 
-use tokio::sync::{mpsc::Sender, mpsc::Receiver};
+use tokio::sync::{mpsc::Sender};
 
 mod services;
 mod structs;
 
 static GLOBAL_CONFIG: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
 static HISTORY: RwLock<Option<HashMap<structs::historey_key::HistoryKey, Vec<String>>>> = RwLock::new(None);
-static HERMES_RX: Mutex<Option<Receiver<(String, String)>>> = Mutex::new(None);
 static HERMES_TX: Mutex<Option<Sender<(String, String)>>> = Mutex::new(None);
 static VERSION: &str = "v.0.2.0";
 
@@ -101,18 +100,15 @@ fn main() {
                     Err(e) => panic!("Failed to allocated runtime for Hermes client: {}", e),
                 };
 
-                let (tx, rx) = tokio::sync::mpsc::channel(256);
+                let (tx, mut rx) = tokio::sync::mpsc::channel(256);
                 {
-                    let mut grx = HERMES_RX.lock().unwrap();
-                    *grx = Some(rx);
-
                     let mut grt = HERMES_TX.lock().unwrap();
                     *grt = Some(tx);
                 }                
 
                 rt.block_on(async move {
                     loop {
-                        let _ = services::hermes_client::start_hermes_client(&config2).await;
+                        let _ = services::hermes_client::start_hermes_client(&config2, &mut rx).await;
                         eprintln!("Hermes client has failed, try to restart 30 sec later");
                         tokio::time::sleep(tokio::time::Duration::new(30, 0)).await;
                     }

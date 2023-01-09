@@ -32,6 +32,8 @@ message PlanArg {
 
 message PlanId {
     uint32 id = 1;
+    string set = 2;
+    string plan = 3;
 }
 
 message PlanList {

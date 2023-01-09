@@ -9,7 +9,7 @@ mod services;
 mod structs;
 
 static GLOBAL_CONFIG: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
-static HISTORY: RwLock<Option<HashMap<u32, Vec<String>>>> = RwLock::new(None);
+static HISTORY: RwLock<Option<HashMap<structs::historey_key::HistoryKey, Vec<String>>>> = RwLock::new(None);
 static VERSION: &str = "v.0.2.0";
 
 fn main() {

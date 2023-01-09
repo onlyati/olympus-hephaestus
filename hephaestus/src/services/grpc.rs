@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -12,7 +13,8 @@ use chrono::Datelike;
 use chrono::Timelike;
 
 use crate::structs::plan::Plan;
-use crate::structs::step::{Step};
+use crate::structs::step::Step;
+use crate::structs::historey_key::HistoryKey;
 use crate::structs::enums::{StepOutputType, StepStatus, StepType};
 
 use crate::GLOBAL_CONFIG;
@@ -191,7 +193,7 @@ impl Hephaestus for HephaestusGrpc {
             let mut collected: Vec<PlanId> = Vec::new();
 
             for (key, _) in history.iter() {
-                collected.push(PlanId { id: *key });
+                collected.push(PlanId {id: key.id, set: key.set.clone(), plan: key.plan.clone()});
             }
 
             collected
@@ -207,7 +209,7 @@ impl Hephaestus for HephaestusGrpc {
     /// This gRPC endpoint is responsible to display a scheduled plan status and its log
     async fn show_status(&self, request: Request<PlanId>) -> Result<Response<PlanHistory>, Status> {
         let arg = request.into_inner();
-        let id = arg.id;
+        let id = HistoryKey { id: arg.id, set: String::new(), plan: String::new() };
 
         let hist: Vec<String> = {
             let history = HISTORY.read().unwrap();
@@ -216,6 +218,7 @@ impl Hephaestus for HephaestusGrpc {
                 None => return Err(Status::internal(String::from("History is not initialized yet"))),
             };
 
+            
             let vec = match history.get(&id)  {
                 Some(v) => v,
                 None => return Err(Status::not_found(String::from("Id is not found"))),
@@ -261,28 +264,29 @@ impl Hephaestus for HephaestusGrpc {
             let mut max_key: u32 = 0;
 
             for (key, _) in history.iter() {
-                if *key > max_key {
-                    max_key = *key;
+                if key.id > max_key {
+                    max_key = key.id;
                 }
             }
 
             let next_id = max_key + 1;
 
-            history.insert(next_id, Vec::new());
+            let key = HistoryKey { id: next_id, set: set.clone(), plan: plan_name.clone() };
+            history.insert(key.clone(), Vec::new());
 
             let path = format!("{}/{}/{}.conf", rule_dir, set, plan_name);
             let path = Path::new(&path);
 
             let plan = match super::parser::collect_steps(path) {
                 Ok(plan) => {
-                    match history.get_mut(&next_id) {
+                    match history.get_mut(&key) {
                         Some(log) => log.push(msg_with_time_stamp(format!("----> {}/{} => Plan has initialized", set, plan_name), StepOutputType::Info)),
                         None => (),
                     }
                     plan 
                 },
                 Err(e) => { 
-                    match history.get_mut(&next_id) {
+                    match history.get_mut(&key) {
                         Some(log) => log.push(msg_with_time_stamp(format!("----> {}/{} => Failed to parse the plan: {}", set, plan_name, e), StepOutputType::Error)),
                         None => (),
                     }
@@ -351,15 +355,135 @@ impl Hephaestus for HephaestusGrpc {
         });
 
         // Batch is running in the backgorund, give anser back
-        return Ok(Response::new(PlanId { id: plan_info.0}));
+        return Ok(Response::new(PlanId { id: plan_info.0, set: set.clone(), plan: plan_name.clone()}));
     }
 
+    /// Write into file a specific output
     async fn dump_hist(&self, request: Request<PlanId>) -> Result<Response<Empty>, Status> {
-        unimplemented!();
+        let plan_id = request.into_inner();
+        let id = HistoryKey { id: plan_id.id, set: String::new(), plan: String::new() };
+
+        let log_dir = {
+            let config = GLOBAL_CONFIG.read().unwrap();
+            let config = match &*config {
+                Some(c) => c,
+                None => return Err(Status::internal(String::from("Config is not initialized yet"))),
+            };
+
+            match config.get("plan.rule_log") {
+                Some(p) => p.clone(),
+                None => return Err(Status::internal(String::from("Log directory is not specified in config"))),
+            }
+        };
+
+        let hist = {
+            let mut history = HISTORY.write().unwrap();
+            let history = match &mut *history {
+                Some(h) => h,
+                None => return Err(Status::internal(String::from("History is not initialized yet"))),
+            };
+
+            let hist = match history.get_key_value(&id) {
+                Some(hist) => (hist.0.clone(), hist.1.clone()),
+                None => return Err(Status::not_found(String::from("Specified id is not found in online history"))),
+            };
+
+            hist
+        };
+
+        let time = {
+            match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                Ok(n) => n.as_secs(),
+                Err(_) => return Err(Status::internal(String::from("Failed to fetch time"))),
+            }
+        };
+
+        println!("Archiving {}_{} output...", hist.0, time);
+
+        let path = format!("{}/{}_{}.log", log_dir, hist.0, time);
+        let path = Path::new(&path);
+        let mut log_file = match std::fs::File::create(path) {
+            Ok(f) => f,
+            Err(e) => return Err(Status::internal(format!("Failed to create log file {}: {}", path.display(), e))),
+        };
+
+        for line in hist.1 {
+            match writeln!(log_file, "{}", line) {
+                Ok(_) => (),
+                Err(e) => return Err(Status::internal(format!("Failed to write onto file {}: {}", path.display(), e)))
+            }
+        }
+
+        {
+            let mut history = HISTORY.write().unwrap();
+            let history = match &mut *history {
+                Some(hist) => hist,
+                None => return Err(Status::internal(String::from("History is not initialized yet"))),
+            };
+
+            history.remove(&id);
+        }
+
+        return Ok(Response::new(Empty {}));
     }
 
-    async fn dump_hist_all(&self, request: Request<Empty>) -> Result<Response<Empty>, Status> {
-        unimplemented!();
+    /// Dump all output from the memory
+    async fn dump_hist_all(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
+        let log_dir = {
+            let config = GLOBAL_CONFIG.read().unwrap();
+            let config = match &*config {
+                Some(c) => c,
+                None => return Err(Status::internal(String::from("Config is not initialized yet"))),
+            };
+
+            match config.get("plan.rule_log") {
+                Some(p) => p.clone(),
+                None => return Err(Status::internal(String::from("Log directory is not specified in config"))),
+            }
+        };
+
+        let mut history = HISTORY.write().unwrap();
+        let history = match &mut *history {
+            Some(h) => h,
+            None => return Err(Status::internal("History is not initlaized yet")),
+        };
+
+        let time = {
+            match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                Ok(n) => n.as_secs(),
+                Err(_) => return Err(Status::internal(String::from("Failed to fetch time"))),
+            }
+        };
+
+        let mut written: Vec<HistoryKey> = Vec::new();
+
+        for (key, value) in history.iter() {
+            println!("Acrhiving {}_{} output...", key, time);
+            let path = format!("{}/{}_{}.log", log_dir, key, time);
+            let path = Path::new(&path);
+            let mut log_file = match std::fs::File::create(path) {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("Failed to archive {}: {}", path.display(), e);
+                    continue;
+                }
+            };
+
+            for line in value {
+                if let Err(e) = writeln!(log_file, "{}", line) {
+                    eprintln!("Failed to write {}: {}", path.display(), e);
+                    continue;
+                }
+            }
+
+            written.push(key.clone());
+        }
+
+        for ok in written {
+            history.remove(&ok);
+        }
+
+        return Ok(Response::new(Empty {}));
     }
 }
 
@@ -407,7 +531,8 @@ where F: Fn(&mut Vec<String>) {
             return;
         }
     };
-    match history.get_mut(&index) {
+    let key = HistoryKey { id: index, set: String::new(), plan: String::new() };
+    match history.get_mut(&key) {
         Some(log) => {
             func(log);
         },

@@ -1,11 +1,9 @@
-use std::process::exit;
-
 use clap::Parser;
 use tonic::transport::Channel;
 use tonic::{Request, Response, Status};
 
 use hephaestus::hephaestus_client::HephaestusClient;
-use hephaestus::{Empty, List, PlanSetArg, PlanArg, PlanId, Dictionary, PlanStep, PlanDetails, PlanHistory, PlanList};
+use hephaestus::{Empty, List, PlanSetArg, PlanArg, PlanId, PlanDetails, PlanHistory, PlanList};
 
 mod hephaestus {
     tonic::include_proto!("hephaestus");
@@ -188,6 +186,8 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 Some(id) => {
                     let params = PlanId {
                         id: id,
+                        set: String::new(),
+                        plan: String::new(),
                     };
                     let response: Result<Response<PlanHistory>, Status> = grpc_client.show_status(params).await;
 
@@ -212,10 +212,33 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
             }
         },
         Action::DumpAllHistory => {
-
+            if let Err(e) = grpc_client.dump_hist_all(Empty {}).await {
+                eprintln!("Failed to dump logs: {}", e);
+                final_rc = 4;
+            }
         },
         Action::DumpHistory => {
-
+            match args.plan_id {
+                Some(id) => {
+                    let params = PlanId {
+                        id: id,
+                        set: String::new(),
+                        plan: String::new(),
+                    };
+                    let response: Result<Response<Empty>, Status> = grpc_client.dump_hist(params).await;
+                    match response {
+                        Ok(_) => println!("Output is dumped onto file"),
+                        Err(e) => {
+                            eprintln!("Failed request: {}", e.message());
+                            final_rc = 4;
+                        }
+                    }
+                },
+                None => {
+                    eprintln!("Plan id have to be set");
+                    final_rc = 4;
+                }
+            }
         },
     }
 

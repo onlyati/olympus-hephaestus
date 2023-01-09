@@ -1,6 +1,7 @@
 use std::fmt;
 use std::hash::Hash;
 
+/// This struct is the key for that Hashmap which stores the online log of Hephaestus plans
 #[derive(Clone)]
 pub struct HistoryKey {
     pub id: u32,

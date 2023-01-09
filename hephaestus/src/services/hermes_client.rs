@@ -11,10 +11,11 @@ mod hermes {
 }
 
 pub async fn start_hermes_client(config: &HashMap<String, String>, receiver: &mut tokio::sync::mpsc::Receiver<(String, String)>) -> Result<(), Box<dyn std::error::Error>> {
-
+    // Address and table are mandatory parameters, they are enough for a simple non-TLS connection
     let addr = config.get("hermes.grpc.address").unwrap();
     let table = config.get("hermes.table").unwrap();
 
+    // Get TLS related settiongs from the config
     let tls = match config.get("hermes.grpc.tls") {
         Some(tls) => tls.clone(),
         None => String::from("no"),
@@ -22,6 +23,7 @@ pub async fn start_hermes_client(config: &HashMap<String, String>, receiver: &mu
     let tls_cert = config.get("hermes.grpc.tls.ca_cert");
     let tls_domain = config.get("hermes.grpc.tls.domain");
 
+    // Create a gRPC channel for Hermes, TLS version if specified, else non-TLS
     let channel = if tls == "yes" && tls_cert.is_some() && tls_domain.is_some() {
         let pem = tokio::fs::read(tls_cert.unwrap()).await.unwrap();
         let ca = Certificate::from_pem(pem);
@@ -46,9 +48,11 @@ pub async fn start_hermes_client(config: &HashMap<String, String>, receiver: &mu
             .unwrap()
     };
 
+    // Create new gRPC client
     let mut client = HermesClient::new(channel);
     println!("Hermes client is ready");
 
+    // Waiting for message what has to be send over to Hermes
     while let Some(message) = receiver.recv().await {
         println!("Update Hermes with {:?}", message);
         let pair = SetPair {

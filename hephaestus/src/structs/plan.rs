@@ -1,6 +1,7 @@
 use super::enums::StepStatus;
 use super::step::Step;
 
+/// A plan consist of more step which can depend from each other
 pub struct Plan {
     pub id: String,
     pub status: StepStatus,

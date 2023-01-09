@@ -88,6 +88,7 @@ impl Step {
                     });
                 }
 
+                // Prepare command
                 let mut cmd: Command = match &self.user {
                     Some(u) => {
                         let mut b_cmd = Command::new("/usr/bin/sudo");
@@ -125,6 +126,8 @@ impl Step {
                     cmd.current_dir(path);
                 }
 
+                // Because accurate timestamp is needed, what the program wrote and when, this child has to be spawn
+                // Outputs are directed to pipes, which is conitnousily read later
                 let mut child = cmd
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
@@ -134,6 +137,7 @@ impl Step {
                 let mut stdout: Vec<StepOutput> = Vec::new();
                 let mut stderr: Vec<StepOutput> = Vec::new();
 
+                // Connect to child outputs and read them continousily
                 std::thread::scope(|spawner| {
                     spawner.spawn(|| {
                         let pipe = child.stdout.as_mut().unwrap();
@@ -145,6 +149,7 @@ impl Step {
                     });
                 });
 
+                // Merge stdout and stderr, get the exit code, then return
                 stdout.append(&mut stderr);
                 stdout.sort_by(|a, b| a.time.cmp(&b.time));
                 for line in &mut stdout {

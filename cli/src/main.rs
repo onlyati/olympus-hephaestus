@@ -37,6 +37,9 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
     let mut final_rc = 0;
 
     match args.action {
+        /*---------------------------------------------------------------------------------------*/
+        /* List all plan sets                                                                    */
+        /*---------------------------------------------------------------------------------------*/
         Action::ListPlanSets => {
             let response: Result<Response<List>, Status> = grpc_client.list_plan_sets(Request::new(Empty {})).await;
 
@@ -56,6 +59,9 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 }
             }
         },
+        /*---------------------------------------------------------------------------------------*/
+        /* List all plan within a specified set                                                  */
+        /*---------------------------------------------------------------------------------------*/
         Action::ListPlans => {
             if args.plan_set.is_some() {
                 let params = PlanSetArg {
@@ -84,6 +90,9 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 final_rc = 2;
             }
         },
+        /*---------------------------------------------------------------------------------------*/
+        /* Get details about a specified plan                                                    */
+        /*---------------------------------------------------------------------------------------*/
         Action::ListPlan => {
             if args.plan_set.is_some() && args.plan_name.is_some() {
                 let params = PlanArg {
@@ -134,6 +143,9 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 final_rc = 2;
             }
         },
+        /*---------------------------------------------------------------------------------------*/
+        /* See what is in the online log dataset                                                 */
+        /*---------------------------------------------------------------------------------------*/
         Action::Plans => {
             let response: Result<Response<PlanList>, Status> = grpc_client.show_plans(Request::new(Empty { })).await;
 
@@ -153,6 +165,9 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 }
             }
         },
+        /*---------------------------------------------------------------------------------------*/
+        /* Execute specified plan                                                                */
+        /*---------------------------------------------------------------------------------------*/
         Action::Exec => {
             if args.plan_set.is_some() && args.plan_name.is_some() {
                 let params = PlanArg {
@@ -178,6 +193,9 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 final_rc = 2;
             }
         },
+        /*---------------------------------------------------------------------------------------*/
+        /* Get output of a specified online log                                                  */
+        /*---------------------------------------------------------------------------------------*/
         Action::Status => {
             match args.plan_id {
                 Some(id) => {
@@ -208,12 +226,18 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 }
             }
         },
+        /*---------------------------------------------------------------------------------------*/
+        /* Write all log from memory into files                                                  */
+        /*---------------------------------------------------------------------------------------*/
         Action::DumpAllHistory => {
             if let Err(e) = grpc_client.dump_hist_all(Empty {}).await {
                 eprintln!("Failed to dump logs: {}", e);
                 final_rc = 4;
             }
         },
+        /*---------------------------------------------------------------------------------------*/
+        /* Write specific plan from online log into file                                         */
+        /*---------------------------------------------------------------------------------------*/
         Action::DumpHistory => {
             match args.plan_id {
                 Some(id) => {
@@ -245,12 +269,14 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
     return Ok(final_rc);
 }
 
+/// Print text only, when verbose flag is set
 fn print_verbose<T: std::fmt::Display>(args: &Args, text: T) {
     if args.verbose {
         println!("> {}", text);
     }
 }
 
+/// Create a new gRPC channel which connection to Hephaestus
 async fn create_grpc_channel(args: Args) -> Channel {
     if !args.hostname.starts_with("cfg://") {
         print_verbose(&args, "Not cfg:// procotll is given");

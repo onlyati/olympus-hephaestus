@@ -373,7 +373,7 @@ impl Hephaestus for HephaestusGrpc {
         return Ok(Response::new(PlanId { id: plan_info.0, set: set.clone(), plan: plan_name.clone()}));
     }
 
-    /// Write into file a specific output
+    /// Write into a file a specific output
     async fn dump_hist(&self, request: Request<PlanId>) -> Result<Response<Empty>, Status> {
         let plan_id = request.into_inner();
         let id = HistoryKey { id: plan_id.id, set: String::new(), plan: String::new() };
@@ -502,9 +502,11 @@ impl Hephaestus for HephaestusGrpc {
     }
 }
 
+/// Start gRPC server, this must be run from a tokio runtime environment
 pub async fn start_server(config: &HashMap<String, String>) -> Result<(), Box<dyn std::error::Error>> {
     match config.get("host.grpc.address") {
         Some(addr) => {
+            // Create structs
             let hepha_grpc = HephaestusGrpc::default();
             let hepha_service = HephaestusServer::new(hepha_grpc);
 
@@ -517,6 +519,7 @@ pub async fn start_server(config: &HashMap<String, String>) -> Result<(), Box<dy
             let addr = addr.unwrap();
             let addr = std::net::SocketAddr::from_str(&addr[..])?;
 
+            // Read that TLS is required
             let tls = {
                 match config.get("host.grpc.tls") {
                     Some(v) => v,
@@ -525,6 +528,7 @@ pub async fn start_server(config: &HashMap<String, String>) -> Result<(), Box<dy
             };
 
             if tls == "yes" {
+                // If TLS required, we need to read certifications and keys and setup TLS for server
                 let server_cert = match config.get("host.grpc.tls.pem") {
                     Some(v) => tokio::fs::read(v).await?,
                     None => {
@@ -552,6 +556,7 @@ pub async fn start_server(config: &HashMap<String, String>) -> Result<(), Box<dy
                     .await?;
             }
             else {
+                // If TLS is not reoquired, just start the server
                 println!("Start gRPC endpoint on {}", addr);
                 Server::builder()
                     .add_service(hepha_service)
@@ -566,6 +571,7 @@ pub async fn start_server(config: &HashMap<String, String>) -> Result<(), Box<dy
     return Ok(());
 }
 
+/// Return message format what is in present in log files
 fn msg_with_time_stamp(msg: String, out_type: StepOutputType) -> String {
     let now = chrono::Local::now();
     let now = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
@@ -573,6 +579,7 @@ fn msg_with_time_stamp(msg: String, out_type: StepOutputType) -> String {
     return format!("{} {} {}", now, out_type, msg);
 }
 
+/// Put an exclusive enqueue for history, then write into it
 fn write_history<F>(index: u32, func: F) 
 where F: Fn(&mut Vec<String>) {
     let mut history = HISTORY.write().unwrap();

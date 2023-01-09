@@ -363,7 +363,7 @@ impl Hephaestus for HephaestusGrpc {
                 {
                     let tx = crate::HERMES_TX.lock().unwrap();
                     if let Some(tx) = &*tx {
-                        let _ = tx.send((format!("{}_{}_{}", plan_info.2, plan_info.1.id, plan_info.0), format!("{:?}", plan_info.1.status))).await;
+                        let _ = tx.send((format!("batch_{}_{}_{}", plan_info.2, plan_info.1.id, plan_info.0), format!("{:?}", plan_info.1.status))).await;
                     }
                 }
             });

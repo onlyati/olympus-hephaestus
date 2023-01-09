@@ -254,7 +254,7 @@ impl Hephaestus for HephaestusGrpc {
         };
 
         // First we need to figure out what is the next id and allocate a new output list in it
-        let mut plan_info: (u32, Plan) = {
+        let mut plan_info: (u32, Plan, String) = {
             let mut history = HISTORY.write().unwrap();
 
             let history = match &mut *history {
@@ -295,63 +295,77 @@ impl Hephaestus for HephaestusGrpc {
                 },
             };
 
-            (next_id, plan)
+            (next_id, plan, set.clone())
         };
 
         println!("Scheduling {}({})...", plan_info.1.id, plan_info.0);
 
         // Start batch in the background
         std::thread::spawn(move || {
-            let mut completion_list: HashMap<&String, Step> = HashMap::new();
-            plan_info.1.status = StepStatus::Ok;
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(async move {
+                let mut completion_list: HashMap<&String, Step> = HashMap::new();
+                plan_info.1.status = StepStatus::Ok;
 
-            for step in plan_info.1.steps.iter_mut() {
-                write_history(plan_info.0, |log| {
-                    log.push(msg_with_time_stamp(format!("----> {} => Pending", step.step_name), StepOutputType::Info));
-                });
+                for step in plan_info.1.steps.iter_mut() {
+                    write_history(plan_info.0, |log| {
+                        log.push(msg_with_time_stamp(format!("----> {} => Pending", step.step_name), StepOutputType::Info));
+                    });
 
-                let mut enable = false;
+                    let mut enable = false;
 
-                match &step.parent {
-                    Some(p) => {
-                        if let Some(v) = completion_list.get(p) {
-                            if (v.status == StepStatus::Ok && step.step_type == StepType::Action) || 
-                               ((v.status == StepStatus::Failed || v.status == StepStatus::Nok) && step.step_type == StepType::Recovery) {
-                                enable = true;
+                    match &step.parent {
+                        Some(p) => {
+                            if let Some(v) = completion_list.get(p) {
+                                if (v.status == StepStatus::Ok && step.step_type == StepType::Action) || 
+                                ((v.status == StepStatus::Failed || v.status == StepStatus::Nok) && step.step_type == StepType::Recovery) {
+                                    enable = true;
+                                }
                             }
                         }
-                    }
-                    None => {
-                        enable = true;
-                    }
-                }
-
-                if enable {
-                    let step_log = step.execute();
-                    if step_log.len() > 0 {
-                        {
-                            write_history(plan_info.0, |log| {
-                                let mut msgs: Vec<String> = step_log.iter()
-                                    .map(|x| format!("{} {} {}", x.time, x.out_type, x.text))
-                                    .collect();
-                                log.append(&mut msgs);
-                            });
+                        None => {
+                            enable = true;
                         }
                     }
-                    completion_list.insert(&step.step_name, step.clone());
-                }
 
-                if step.status != StepStatus::Ok && step.status != StepStatus::NotRun {
-                    plan_info.1.status = step.status.clone();
+                    if enable {
+                        let step_log = step.execute();
+                        if step_log.len() > 0 {
+                            {
+                                write_history(plan_info.0, |log| {
+                                    let mut msgs: Vec<String> = step_log.iter()
+                                        .map(|x| format!("{} {} {}", x.time, x.out_type, x.text))
+                                        .collect();
+                                    log.append(&mut msgs);
+                                });
+                            }
+                        }
+                        completion_list.insert(&step.step_name, step.clone());
+                    }
+
+                    if step.status != StepStatus::Ok && step.status != StepStatus::NotRun {
+                        plan_info.1.status = step.status.clone();
+                    }
+
+                    write_history(plan_info.0, |log| {
+                        log.push(msg_with_time_stamp(format!("----> {} => {:?}", step.step_name, step.status), StepOutputType::Info));
+                    });
                 }
 
                 write_history(plan_info.0, |log| {
-                    log.push(msg_with_time_stamp(format!("----> {} => {:?}", step.step_name, step.status), StepOutputType::Info));
+                    log.push(msg_with_time_stamp(format!("----> Plan is ended, overall status: {:?}", plan_info.1.status), StepOutputType::Info));
                 });
-            }
 
-            write_history(plan_info.0, |log| {
-                log.push(msg_with_time_stamp(format!("----> Plan is ended, overall status: {:?}", plan_info.1.status), StepOutputType::Info));
+                // Send updates to Hermes if enabled
+                {
+                    let tx = crate::HERMES_TX.lock().unwrap();
+                    if let Some(tx) = &*tx {
+                        let _ = tx.send((format!("{}_{}_{}", plan_info.2, plan_info.1.id, plan_info.0), format!("{:?}", plan_info.1.status))).await;
+                    }
+                }
             });
         });
 

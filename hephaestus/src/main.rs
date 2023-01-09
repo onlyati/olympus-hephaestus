@@ -2,14 +2,19 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::exit;
+use std::sync::Mutex;
 use std::sync::RwLock;
 use std::collections::HashMap;
+
+use tokio::sync::{mpsc::Sender, mpsc::Receiver};
 
 mod services;
 mod structs;
 
 static GLOBAL_CONFIG: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
 static HISTORY: RwLock<Option<HashMap<structs::historey_key::HistoryKey, Vec<String>>>> = RwLock::new(None);
+static HERMES_RX: Mutex<Option<Receiver<(String, String)>>> = Mutex::new(None);
+static HERMES_TX: Mutex<Option<Sender<(String, String)>>> = Mutex::new(None);
 static VERSION: &str = "v.0.2.0";
 
 fn main() {
@@ -78,6 +83,42 @@ fn main() {
     {
         let mut history = HISTORY.write().unwrap();
         *history = Some(HashMap::new());
+    }
+
+    /*-------------------------------------------------------------------------------------------*/
+    /* Allocate a tokio runtime and start Hermes client if required                              */
+    /*-------------------------------------------------------------------------------------------*/
+    if let Some(ena) = config.get("hermes.enable") {
+        if ena == "yes" && config.get("hermes.grpc.address").is_some() && config.get("hermes.table").is_some() {
+            println!("Corresponse properties are set to yes, so start Hermes client");
+            let config2 = config.clone();
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build();
+                let rt = match rt {
+                    Ok(rt) => rt,
+                    Err(e) => panic!("Failed to allocated runtime for Hermes client: {}", e),
+                };
+
+                let (tx, rx) = tokio::sync::mpsc::channel(256);
+                {
+                    let mut grx = HERMES_RX.lock().unwrap();
+                    *grx = Some(rx);
+
+                    let mut grt = HERMES_TX.lock().unwrap();
+                    *grt = Some(tx);
+                }                
+
+                rt.block_on(async move {
+                    loop {
+                        let _ = services::hermes_client::start_hermes_client(&config2).await;
+                        eprintln!("Hermes client has failed, try to restart 30 sec later");
+                        tokio::time::sleep(tokio::time::Duration::new(30, 0)).await;
+                    }
+                })
+            });
+        }
     }
 
     /*-------------------------------------------------------------------------------------------*/

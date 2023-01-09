@@ -1,5 +1,5 @@
 use clap::Parser;
-use tonic::transport::Channel;
+use tonic::transport::{Channel, Certificate, ClientTlsConfig};
 use tonic::{Request, Response, Status};
 
 use hephaestus::hephaestus_client::HephaestusClient;
@@ -30,10 +30,7 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
     let start = std::time::Instant::now();
 
     // Try to connect to gRPC server
-    let grpc_channel = Channel::from_shared(args.hostname.clone())
-        .unwrap()
-        .connect()
-        .await?;
+    let grpc_channel = create_grpc_channel(args.clone()).await;
 
     let mut grpc_client = HephaestusClient::new(grpc_channel);
 
@@ -251,5 +248,76 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
 fn print_verbose<T: std::fmt::Display>(args: &Args, text: T) {
     if args.verbose {
         println!("> {}", text);
+    }
+}
+
+async fn create_grpc_channel(args: Args) -> Channel {
+    if !args.hostname.starts_with("cfg://") {
+        print_verbose(&args, "Not cfg:// procotll is given");
+        return Channel::from_shared(args.hostname.clone())
+            .unwrap()
+            .connect()
+            .await
+            .unwrap();
+    }
+
+    let host = args.hostname[6..].to_string();
+    
+    let config_path = match &args.config {
+        Some(v) => v.clone(),
+        None => String::from("/etc/olympus/hephaestus/client.conf"),
+    };
+
+    print_verbose(&args, format!("cfg:// is specified, will be looking for in {} for {} settings", host, config_path));
+
+    let config = match onlyati_config::read_config(&config_path[..]) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to read config: {}", e);
+            std::process::exit(2);
+        }
+    };
+
+    let addr = match config.get(&format!("node.{}.address", host)) {
+        Some(a) => a.clone(),
+        None => {
+            eprintln!("No address is found for '{}' in config", host);
+            std::process::exit(2);
+        }
+    };
+
+    let ca = config.get(&format!("node.{}.ca_cert", host));
+    let domain = config.get(&format!("node.{}.domain", host));
+
+    print_verbose(&args, format!("{:?}, {:?}", ca, domain));
+
+    if ca.is_some() && domain.is_some() {
+        let pem = match tokio::fs::read(ca.unwrap()).await {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("Failed to read {}: {}", ca.unwrap(), e);
+                std::process::exit(2);
+            }
+        };
+        let ca = Certificate::from_pem(pem);
+
+        let tls = ClientTlsConfig::new()
+            .ca_certificate(ca)
+            .domain_name(domain.unwrap());
+        
+        return Channel::from_shared(addr)
+            .unwrap()
+            .tls_config(tls)
+            .unwrap()
+            .connect()
+            .await
+            .unwrap();
+    }
+    else {
+        return Channel::from_shared(addr)
+            .unwrap()
+            .connect()
+            .await
+            .unwrap();
     }
 }

@@ -4,6 +4,7 @@ use std::path::Path;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use tonic::transport::{Identity, ServerTlsConfig};
 use tonic::{transport::Server, Request, Response, Status};
 
 use hephaestus::hephaestus_server::{Hephaestus, HephaestusServer};
@@ -502,11 +503,48 @@ pub async fn start_server(config: &HashMap<String, String>) -> Result<(), Box<dy
             let addr = addr.unwrap();
             let addr = std::net::SocketAddr::from_str(&addr[..])?;
 
-            println!("Start gRPC endpoint on {}", addr);
-            Server::builder()
-                .add_service(hepha_service)
-                .serve(addr)
-                .await?;
+            let tls = {
+                match config.get("host.grpc.tls") {
+                    Some(v) => v,
+                    None => "no"
+                }
+            };
+
+            if tls == "yes" {
+                let server_cert = match config.get("host.grpc.tls.pem") {
+                    Some(v) => tokio::fs::read(v).await?,
+                    None => {
+                        eprintln!("Property 'host.grpc.tls.pem' is not specified");
+                        return Ok(());
+                    }
+                };
+                let server_key = match config.get("host.grpc.tls.key") {
+                    Some(v) => tokio::fs::read(v).await?,
+                    None => {
+                        eprintln!("Property 'host.grpc.tls.key' is not specified");
+                        return Ok(());
+                    }
+                };
+                let server_identity = Identity::from_pem(server_cert, server_key);
+
+                let tls = ServerTlsConfig::new()
+                    .identity(server_identity);
+
+                println!("Start gRPC endpoint in on {} with TLS", addr);
+                Server::builder()
+                    .tls_config(tls)?
+                    .add_service(hepha_service)
+                    .serve(addr)
+                    .await?;
+            }
+            else {
+                println!("Start gRPC endpoint on {}", addr);
+                Server::builder()
+                    .add_service(hepha_service)
+                    .serve(addr)
+                    .await?;    
+            }
+            
         }
         None => eprintln!("Hostname and port is not found in config with 'host.grpc.address' property"),
     }

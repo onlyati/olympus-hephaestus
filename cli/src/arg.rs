@@ -1,6 +1,6 @@
 use clap::{Parser, ValueEnum};
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(author, about, long_about)]
 pub struct Args {
     /// Specify the action what to do
@@ -26,9 +26,13 @@ pub struct Args {
     /// Where it should connect
     /// Allowed formats:
     /// - <protocol>://<hostname>:<port>, for example http://127.0.0.1:3041
-    /// - cfg://<definition-name>, for example: cfg://atihome, it will search in its config for more information
+    /// - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
     #[arg(short = 'H', long, verbatim_doc_comment, value_parser = check_hostname)]
     pub hostname: String,
+
+    /// Config file for connection details
+    #[arg(short, long)]
+    pub config: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]

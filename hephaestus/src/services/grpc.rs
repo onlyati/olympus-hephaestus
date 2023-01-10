@@ -473,7 +473,7 @@ impl Hephaestus for HephaestusGrpc {
         let mut written: Vec<HistoryKey> = Vec::new();
 
         for (key, value) in history.iter() {
-            println!("Acrhiving {}_{} output...", key, time);
+            println!("Archiving {}_{} output...", key, time);
             let path = format!("{}/{}_{}.log", log_dir, key, time);
             let path = Path::new(&path);
             let mut log_file = match std::fs::File::create(path) {

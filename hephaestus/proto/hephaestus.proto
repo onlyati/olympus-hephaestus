@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+option csharp_namespace = "HephaestusGrpc";
+
+package hephaestus;
+
+service Hephaestus {
+    rpc ListPlanSets (Empty) returns (List);
+    rpc ListPlans (PlanSetArg) returns (List);
+    rpc ListPlan (PlanArg) returns (PlanDetails);
+    rpc ShowPlans (Empty) returns (PlanList);
+    rpc ShowStatus (PlanId) returns (PlanHistory);
+    rpc Execute (PlanArg) returns (PlanId);
+    rpc DumpHist (PlanId) returns (Empty);
+    rpc DumpHistAll (Empty) returns (Empty);
+}
+
+message Empty {}
+
+message List {
+    repeated string list = 1;
+}
+
+message PlanSetArg {
+    string name = 1;
+}
+
+message PlanArg {
+    string set = 1;
+    string plan = 2;
+}
+
+message PlanId {
+    uint32 id = 1;
+    string set = 2;
+    string plan = 3;
+}
+
+message PlanList {
+    repeated PlanId ids = 1;
+}
+
+message Dictionary {
+    string key = 1;
+    string value = 2;
+}
+
+message PlanStep {
+    string name = 1;
+    string desc = 2;
+    string type = 3;
+    string user = 4;
+    string action = 5;
+    string parent = 6;
+    repeated Dictionary envvars = 7;
+}
+
+message PlanDetails {
+    string id = 1;
+    repeated PlanStep steps = 2;
+}
+
+message PlanHistory {
+    repeated string history = 1;
+}
+
+

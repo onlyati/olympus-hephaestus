@@ -362,8 +362,9 @@ impl Hephaestus for HephaestusGrpc {
                 // Send updates to Hermes if enabled
                 {
                     let tx = crate::HERMES_TX.lock().unwrap();
+
                     if let Some(tx) = &*tx {
-                        let _ = tx.send((format!("batch_{}_{}_{}", plan_info.2, plan_info.1.id, plan_info.0), format!("{:?}", plan_info.1.status))).await;
+                        let _ = tx.send((format!("{}/{}/{}", plan_info.2, plan_info.1.id, plan_info.0), format!("{:?}", plan_info.1.status))).await;
                     }
                 }
             });

@@ -48,6 +48,12 @@ pub async fn start_hermes_client(config: &HashMap<String, String>, receiver: &mu
             .unwrap()
     };
 
+    // Get key prefix for hermes
+    let prefix = match config.get("hermes.key.prefix") {
+        Some(s) => s.clone(),
+        None => String::from(""),
+    };
+
     // Create new gRPC client
     let mut client = HermesClient::new(channel);
     println!("Hermes client is ready");
@@ -55,8 +61,9 @@ pub async fn start_hermes_client(config: &HashMap<String, String>, receiver: &mu
     // Waiting for message what has to be send over to Hermes
     while let Some(message) = receiver.recv().await {
         println!("Update Hermes with {:?}", message);
+        let key = format!("{}{}", prefix, message.0);
         let pair = SetPair {
-            key: message.0,
+            key: key,
             table: table.clone(),
             value: message.1,
         };

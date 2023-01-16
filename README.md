@@ -21,46 +21,27 @@ Hephaestus stores its plan in simple files. Location of this directory is specif
 Hephaestus also has a CLI program too, by this communication can be done from command line too.
 Following actions can be done from this interface:
 ```
-Usage: hephaestus-cli [OPTIONS] --hostname <HOSTNAME> <ACTION>
+Usage: cli [OPTIONS] --hostname <HOSTNAME> <COMMAND>
 
-Arguments:
-  <ACTION>
-          Specify the action what to do
-
-          Possible values:
-          - list-plan-sets:   List all plan set
-          - list-plans:       List all plan within a set
-          - list-plan:        Get details about specified plan
-          - plans:            List the scheduled plan output from memory
-          - status:           Show status and log of a scheduled plan
-          - exec:             Execute a specified plan
-          - dump-history:     Write a specific scheduled plan output into file
-          - dump-all-history: Write all scheduled plan output into files
+Commands:
+  list-plan-sets    List all plan set
+  list-plans        List all plan within a set
+  list-plan         Get details about specified plan
+  plans             List the scheduled plan output from memory
+  status            Show status and log of a scheduled plan
+  exec              Execute a specified plan
+  dump-history      Write a specific scheduled plan output into file
+  dump-all-history  Write all scheduled plan output into files
+  help              Print this message or the help of the given subcommand(s)
 
 Options:
-      --plan-name <PLAN_NAME>
-          Specified plan's name
-
-      --plan-set <PLAN_SET>
-          Specified plen set's name
-
-      --plan-id <PLAN_ID>
-          Scheduled plan id
-
-  -v, --verbose
-          Display more information for debugging purpose
-
-  -H, --hostname <HOSTNAME>
-          Where it should connect
-          Allowed formats:
-          - <protocol>://<hostname>:<port>, for example http://127.0.0.1:3041
-          - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
-
-  -c, --config <CONFIG>
-          Config file for connection details
-
-  -h, --help
-          Print help information (use `-h` for a summary)
+  -H, --hostname <HOSTNAME>  Where it should connect
+                             Allowed formats:
+                             - <protocol>://<hostname>:<port>, for example http://127.0.0.1:3041
+                             - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
+  -c, --config <CONFIG>      Config file for connection details [default: /etc/olympus/hephaestus/client.conf]
+  -v, --verbose              Show more detail about connection
+  -h, --help                 Print help information
 ```
 
 

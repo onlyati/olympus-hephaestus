@@ -1,27 +1,11 @@
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, about, long_about)]
 pub struct Args {
     /// Specify the action what to do
-    #[arg(value_enum)]
+    #[command(subcommand)]
     pub action: Action,
-
-    /// Specified plan's name
-    #[arg(long)]
-    pub plan_name: Option<String>,
-
-    /// Specified plen set's name
-    #[arg(long)]
-    pub plan_set: Option<String>,
-
-    /// Scheduled plan id
-    #[arg(long)]
-    pub plan_id: Option<u32>,
-
-    /// Display more information for debugging purpose
-    #[arg(short, long, default_value_t = false)]
-    pub verbose: bool,
 
     /// Where it should connect
     /// Allowed formats:
@@ -31,32 +15,64 @@ pub struct Args {
     pub hostname: String,
 
     /// Config file for connection details
-    #[arg(short, long)]
-    pub config: Option<String>,
+    #[arg(short, long, default_value_t = String::from("/etc/olympus/hephaestus/client.conf"))]
+    pub config: String,
+
+    /// Show more detail about connection
+    #[arg(short, long, default_value_t = false)]
+    pub verbose: bool,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum Action {
     /// List all plan set
     ListPlanSets,
 
     /// List all plan within a set
-    ListPlans,
+    ListPlans {
+        /// Specified plen set's name
+        #[arg(long)]
+        set: String,
+    },
 
     /// Get details about specified plan
-    ListPlan,
+    ListPlan {
+        /// Specified plan's name
+        #[arg(long)]
+        name: String,
+
+        /// Specified plen set's name
+        #[arg(long)]
+        set: String,
+    },
 
     /// List the scheduled plan output from memory
     Plans,
 
     /// Show status and log of a scheduled plan
-    Status,
+    Status {
+        /// Scheduled plan id
+        #[arg(long)]
+        id: u32,
+    },
 
     /// Execute a specified plan
-    Exec,
+    Exec {
+        /// Specified plan's name
+        #[arg(long)]
+        name: String,
+
+        /// Specified plen set's name
+        #[arg(long)]
+        set: String,
+    },
 
     /// Write a specific scheduled plan output into file
-    DumpHistory,
+    DumpHistory {
+        /// Scheduled plan id
+        #[arg(long)]
+        id: u32,
+    },
 
     /// Write all scheduled plan output into files
     DumpAllHistory,
